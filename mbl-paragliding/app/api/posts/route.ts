@@ -1,198 +1,198 @@
 // app/api/posts/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import { Post } from "@/models/Post.model"; // giữ named import đúng với model của bạn
+import { Post } from "@/models/Post.model";
 import type { SortOrder } from "mongoose";
 
-export const revalidate = 0;
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-/* -------------------- Helpers -------------------- */
-function toBool(v: string | null): boolean | undefined {
-  if (v == null) return undefined;
+const FIXED_KEYS = new Set([
+  "hoa-binh",
+  "ha-noi",
+  "mu-cang-chai",
+  "yen-bai",
+  "da-nang",
+  "sapa",
+]);
+
+/* ---------- helpers ---------- */
+function toBool(v: unknown): boolean | undefined {
+  if (typeof v !== "string") return undefined;
   const s = v.trim().toLowerCase();
   if (["true", "1", "yes", "y", "on", "published", "public"].includes(s)) return true;
   if (["false", "0", "no", "n", "off", "draft"].includes(s)) return false;
   return undefined;
 }
 
-// Loại dấu tiếng Việt & tạo slug không cần thư viện
 function slugifyVN(input: string): string {
   return input
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // bỏ dấu
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-+/g, "-");
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "").replace(/-+/g, "-");
 }
 
 function buildSort(s?: string): string | [string, SortOrder][] | Record<string, SortOrder> {
-  const v = (s ?? "-createdAt").trim();
+  const v = (s ?? "-publishedAt,-createdAt").trim();
   if (v.includes(",")) {
-    return v
-      .split(",")
-      .map((f) => f.trim())
-      .filter(Boolean)
-      .map<[string, SortOrder]>((f) => (f.startsWith("-") ? [f.slice(1), "desc"] : [f, "asc"]));
+    return v.split(",").map(f => f.trim()).filter(Boolean)
+      .map<[string, SortOrder]>(f => f.startsWith("-") ? [f.slice(1), "desc"] : [f, "asc"]);
   }
   if (v.startsWith("-")) return { [v.slice(1)]: "desc" };
   return { [v]: "asc" };
 }
 
-// Map label ↔︎ slug cho Knowledge để bao phủ dữ liệu cũ (label) & mới (slug)
-const KNOWLEDGE_LABEL_TO_SLUG: Record<string, string> = {
-  "Dù lượn căn bản": "can-ban",
-  "Dù lượn nâng cao": "nang-cao",
-  "Bay thermal": "thermal",
-  "Bay XC": "xc",
-  "Khí tượng bay": "khi-tuong",
-};
-const KNOWLEDGE_SLUG_TO_LABEL: Record<string, string> = Object.fromEntries(
-  Object.entries(KNOWLEDGE_LABEL_TO_SLUG).map(([label, slug]) => [slug, label]),
-);
-const CATEGORY_LABEL_TO_KEY: Record<string, string> = {
-  "Kiến thức dù lượn": "knowledge",
-  "Cửa hàng": "store",
-};
+/* ---------- CORS/preflight (phòng trường hợp gọi từ form lạ) ---------- */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
 
-/* -------------------- GET: list posts -------------------- */
+/* ---------- GET /api/posts ---------- */
 export async function GET(req: Request) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
 
-    // ----- Input params -----
-    let categoryParam = searchParams.get("category")?.trim() || undefined;
-    const subParam = searchParams.get("subCategory")?.trim() || undefined;
-    const storeParam = searchParams.get("storeCategory")?.trim() || undefined;
+    const category = searchParams.get("category")?.trim() || undefined;
+    const fixedParam = searchParams.get("fixed");
+    const fixedKey = searchParams.get("fixedKey")?.trim() || undefined;
 
-    // published: published / isPublished / status
+    // isPublished / published / status
     const p = toBool(
       searchParams.get("published") ??
-        searchParams.get("isPublished") ??
-        searchParams.get("status"),
+      searchParams.get("isPublished") ??
+      searchParams.get("status")
     );
-    // Mặc định: hiển thị bài đã xuất bản (bao gồm doc không có field)
     const wantPublished = p === undefined ? true : p;
 
-    // ----- Build filter “nới lỏng” bao phủ dữ liệu cũ -----
-    const filter: Record<string, any> = {};
+    const term = searchParams.get("q")?.trim() || searchParams.get("search")?.trim() || undefined;
 
-    // category: chấp nhận key hoặc label, không phân biệt hoa-thường
-    if (categoryParam) {
-      const canon = CATEGORY_LABEL_TO_KEY[categoryParam] || categoryParam;
-      if (canon === "knowledge") {
-        filter.$and = (filter.$and || []).concat({
-          $or: [
-            { category: new RegExp("^knowledge$", "i") },
-            { category: new RegExp("^Kiến thức dù lượn$", "i") },
-          ],
-        });
-      } else if (canon === "store") {
-        filter.$and = (filter.$and || []).concat({
-          $or: [{ category: new RegExp("^store$", "i") }, { category: new RegExp("^Cửa hàng$", "i") }],
-        });
-      } else {
-        filter.category = new RegExp(`^${canon}$`, "i");
-      }
-    }
-
-    // subCategory (knowledge): chấp nhận slug hoặc label
-    if (subParam && subParam !== "all") {
-      const label = KNOWLEDGE_SLUG_TO_LABEL[subParam];
-      const $or: any[] = [{ subCategory: new RegExp(`^${subParam}$`, "i") }];
-      if (label) $or.push({ subCategory: new RegExp(`^${label}$`, "i") });
-      filter.$and = (filter.$and || []).concat({ $or });
-    }
-
-    // storeCategory (nếu cần label → thêm map tương tự)
-    if (storeParam) {
-      filter.storeCategory = new RegExp(`^${storeParam}$`, "i");
-    }
-
-    // Xuất bản: kiểu loại trừ (bao phủ doc thiếu field)
-    if (wantPublished === true) {
-      filter.$and = (filter.$and || []).concat({
-        $and: [{ isPublished: { $ne: false } }, { published: { $ne: false } }, { status: { $not: /^draft$/i } }],
-      });
-    } else {
-      filter.$and = (filter.$and || []).concat({
-        $or: [{ isPublished: false }, { published: false }, { status: /^draft$/i }],
-      });
-    }
-
-    // Search (tuỳ chọn)
-    const term = (searchParams.get("q") ?? searchParams.get("search"))?.trim();
-    if (term) {
-      filter.$and = (filter.$and || []).concat({
-        $or: [{ title: { $regex: term, $options: "i" } }, { content: { $regex: term, $options: "i" } }],
-      });
-    }
-
-    // Paging & sort
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "12", 10), 1), 100);
     const skip = (page - 1) * limit;
-    const sort = buildSort(searchParams.get("sort") ?? "-createdAt");
+    const sort = buildSort(searchParams.get("sort") ?? "-publishedAt,-createdAt");
+
+    // ----- filter -----
+    const filter: Record<string, any> = {};
+
+    if (category) filter.category = new RegExp(`^${category}$`, "i");
+
+    const fixed = toBool(fixedParam ?? "");
+    if (fixed === true) {
+      filter.isFixed = true;
+    } else if (fixed === false) {
+      // bài không cố định: không phải true hoặc không có field
+      filter.$or = [{ isFixed: { $ne: true } }, { isFixed: { $exists: false } }];
+    }
+    if (fixedKey) filter.fixedKey = fixedKey;
+
+    if (wantPublished === true) {
+      filter.$and = (filter.$and || []).concat({
+        $and: [
+          { isPublished: { $ne: false } },
+          { status: { $not: /^draft$/i } },
+        ],
+      });
+    } else {
+      filter.$and = (filter.$and || []).concat({
+        $or: [{ isPublished: false }, { status: /^draft$/i }],
+      });
+    }
+
+    if (term) {
+      filter.$and = (filter.$and || []).concat({
+        $or: [
+          { title: { $regex: term, $options: "i" } },
+          { content: { $regex: term, $options: "i" } },
+          { tags: { $in: [new RegExp(term, "i")] } },
+        ],
+      });
+    }
 
     const [items, total] = await Promise.all([
       Post.find(filter).sort(sort).skip(skip).limit(limit).lean(),
       Post.countDocuments(filter),
     ]);
 
-    return NextResponse.json(
-      { items, total, page, limit },
-      {
-        headers: { "Cache-Control": "no-store" },
-      },
-    );
+    return NextResponse.json({ items, total, page, limit }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("GET /api/posts error:", err);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 
-/* -------------------- POST: create post -------------------- */
+/* ---------- POST /api/posts (create) ---------- */
 export async function POST(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
 
-    // Chuẩn hoá isPublished (nếu gửi string)
+    // Chuẩn hoá isPublished từ string
     if (typeof body.isPublished === "string") {
       const b = toBool(body.isPublished);
       if (b !== undefined) body.isPublished = b;
     }
 
-    // Map label -> key chuẩn (nếu form gửi label tiếng Việt)
-    if (body.category === "Kiến thức dù lượn") body.category = "knowledge";
-    if (body.category === "Cửa hàng") body.category = "store";
-    if (body.subCategory && KNOWLEDGE_LABEL_TO_SLUG[body.subCategory]) {
-      body.subCategory = KNOWLEDGE_LABEL_TO_SLUG[body.subCategory];
+    // Bài cố định?
+    if (body.isFixed === true) {
+      // category = news
+      body.category = "news";
+      // bắt buộc fixedKey hợp lệ
+      if (!body.fixedKey || !FIXED_KEYS.has(String(body.fixedKey))) {
+        return NextResponse.json(
+          { message: "Bài viết cố định cần 'fixedKey' hợp lệ (hoa-binh/ha-noi/mu-cang-chai/yen-bai/da-nang/sapa)." },
+          { status: 400 }
+        );
+      }
+    } else {
+      // bài thường: không lưu fixedKey
+      delete body.fixedKey;
+      body.isFixed = false;
     }
 
-    // Tạo slug nếu thiếu, và đảm bảo duy nhất
+    // slug duy nhất
     if (!body.slug && body.title) {
-      const base = slugifyVN(String(body.title)).slice(0, 80);
-      let slug = base || `post-${Date.now().toString(36)}`;
-      let i = 1;
+      const base = slugifyVN(String(body.title)).slice(0, 80) || `post-${Date.now().toString(36)}`;
+      let slug = base; let i = 1;
+      // eslint-disable-next-line no-await-in-loop
       while (await Post.exists({ slug })) slug = `${base}-${i++}`;
       body.slug = slug;
     }
-    if (!body.slug) {
-      body.slug = `post-${Date.now().toString(36)}`;
+    if (!body.slug) body.slug = `post-${Date.now().toString(36)}`;
+
+    // publishedAt
+    if (body.isPublished && !body.publishedAt) body.publishedAt = new Date();
+
+    try {
+      const created = await Post.create({
+        ...body,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return NextResponse.json(created, { status: 201 });
+    } catch (err: any) {
+      if (err?.code === 11000 && err?.keyPattern?.fixedKey) {
+        return NextResponse.json(
+          { message: "fixedKey này đã được dùng cho một bài cố định khác." },
+          { status: 409 }
+        );
+      }
+      if (err?.code === 11000 && err?.keyPattern?.slug) {
+        return NextResponse.json(
+          { message: "Slug đã tồn tại, hãy đổi tiêu đề hoặc slug." },
+          { status: 409 }
+        );
+      }
+      throw err;
     }
-
-    const created = await Post.create({
-      ...body,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    return NextResponse.json(created, { status: 201 });
   } catch (err) {
     console.error("POST /api/posts error:", err);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });

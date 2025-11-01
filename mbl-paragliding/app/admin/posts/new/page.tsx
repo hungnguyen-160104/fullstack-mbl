@@ -8,7 +8,7 @@ import api from "@/lib/api";
 import { authHeader, getToken } from "@/lib/auth";
 import type { PostPayload, StoreCategory } from "@/types/frontend/post";
 
-// ---- Tiểu mục dùng chung cho "Kiến thức" và "Khóa học dù lượn"
+// ====== Tiểu mục dùng chung cho "Kiến thức" và "Khóa học dù lượn"
 type KnowledgeSubCategory = "can-ban" | "nang-cao" | "thermal" | "xc" | "khi-tuong";
 const KNOWLEDGE_SUB_OPTIONS: { value: KnowledgeSubCategory; label: string }[] = [
   { value: "can-ban", label: "Dù lượn căn bản" },
@@ -18,7 +18,18 @@ const KNOWLEDGE_SUB_OPTIONS: { value: KnowledgeSubCategory; label: string }[] = 
   { value: "khi-tuong", label: "Khí tượng bay" },
 ];
 
-// ---- Kiểu dữ liệu form
+// ====== 6 điểm bay cố định (submenu của Tin tức)
+type FixedKey = "hoa-binh" | "ha-noi" | "mu-cang-chai" | "yen-bai" | "da-nang" | "sapa";
+const FIXED_NEWS_OPTIONS: { value: FixedKey; label: string }[] = [
+  { value: "hoa-binh", label: "Viên Nam – Hòa Bình" },
+  { value: "ha-noi", label: "Đồi Bù – Chương Mỹ – Hà Nội" },
+  { value: "mu-cang-chai", label: "Khau Phạ – Mù Cang Chải – Yên Bái" },
+  { value: "yen-bai", label: "Trạm Tấu – Yên Bái" },
+  { value: "da-nang", label: "Sơn Trà – Đà Nẵng" },
+  { value: "sapa", label: "Sapa – Lào Cai" },
+];
+
+// ====== Kiểu dữ liệu form
 interface NewPostForm {
   title: string;
   coverImage: string;
@@ -30,13 +41,16 @@ interface NewPostForm {
   /** Danh mục chính: news | knowledge | store */
   category: "" | "news" | "knowledge" | "store";
 
+  /** Submenu của "Tin tức": để "" = Bài viết mới; chọn 1 trong 6 = Bài cố định */
+  newsFixedKey?: "" | FixedKey;
+
   /** Chỉ dùng khi category = store */
   storeCategory?: StoreCategory;
   price?: number;
 
   /** Tiểu mục cho Kiến thức & Khóa học (nếu applicable) */
-  knowledgeSubCategory?: KnowledgeSubCategory;      // khi category = "knowledge"
-  courseSubCategory?: KnowledgeSubCategory;         // khi category="store" & storeCategory="khoa-hoc-du-luon"
+  knowledgeSubCategory?: KnowledgeSubCategory; // khi category = "knowledge"
+  courseSubCategory?: KnowledgeSubCategory;    // khi category="store" & storeCategory="khoa-hoc-du-luon"
 }
 
 export default function NewPostPage() {
@@ -50,6 +64,7 @@ export default function NewPostPage() {
     language: "vi",
     isPublished: true,
     category: "",
+    newsFixedKey: "",
     storeCategory: undefined,
     price: undefined,
     knowledgeSubCategory: undefined,
@@ -71,6 +86,7 @@ export default function NewPostPage() {
   const isStore = form.category === "store";
   const isKnowledge = form.category === "knowledge";
   const isCourseInStore = isStore && form.storeCategory === "khoa-hoc-du-luon";
+  const isNews = form.category === "news";
 
   // ====== Upload ảnh từ file -> Cloudinary ======
   async function handlePickFile(file: File) {
@@ -104,7 +120,7 @@ export default function NewPostPage() {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      // Payload cơ bản
+      // Payload cơ bản (blog hoặc product)
       const base: PostPayload = {
         title: form.title,
         content: form.content,
@@ -126,6 +142,10 @@ export default function NewPostPage() {
           : isCourseInStore
           ? form.courseSubCategory
           : undefined,
+
+        // NEWS submenu → nếu chọn 1 trong 6 key => bài cố định của điểm bay
+        isFixed: isNews && !!form.newsFixedKey,
+        fixedKey: isNews && form.newsFixedKey ? form.newsFixedKey : undefined,
       };
 
       const path = isStore ? "/api/products" : "/api/posts";
@@ -223,6 +243,7 @@ export default function NewPostPage() {
                   ...form,
                   category: v,
                   // reset các field phụ khi đổi danh mục
+                  newsFixedKey: v === "news" ? form.newsFixedKey : "",
                   storeCategory: v === "store" ? form.storeCategory : undefined,
                   price: v === "store" ? form.price : undefined,
                   knowledgeSubCategory: v === "knowledge" ? form.knowledgeSubCategory : undefined,
@@ -237,6 +258,35 @@ export default function NewPostPage() {
               <option value="store">Cửa hàng</option>
             </select>
           </div>
+
+          {/* Submenu (Tin tức) */}
+          {isNews && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-gray-800">
+                Nhóm (Tin tức)
+              </label>
+              <select
+                className={glassInputStyle}
+                value={form.newsFixedKey || ""}
+                onChange={(e) =>
+                  setForm({ ...form, newsFixedKey: (e.target.value as FixedKey) || "" })
+                }
+              >
+                <option value="">
+                  Bài viết mới (không cố định)
+                </option>
+                {FIXED_NEWS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-700 mt-1">
+                Chọn một địa điểm để đánh dấu <b>bài cố định</b> cho điểm bay đó.
+                Mỗi điểm chỉ có <b>01 bài</b>; nếu trùng sẽ báo lỗi.
+              </p>
+            </div>
+          )}
 
           {/* Tiểu mục cho KIẾN THỨC */}
           {isKnowledge && (
@@ -292,7 +342,6 @@ export default function NewPostPage() {
                 </select>
               </div>
 
-              {/* Tiểu mục cho KHÓA HỌC DÙ LƯỢN (giống Kiến thức) */}
               {form.storeCategory === "khoa-hoc-du-luon" && (
                 <div>
                   <label className="block text-sm font-medium mb-1.5 text-gray-800">

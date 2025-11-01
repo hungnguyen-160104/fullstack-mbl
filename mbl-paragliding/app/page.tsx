@@ -7,7 +7,7 @@ import { useState } from "react";
 import RecentPosts from "@/components/posts/RecentPosts";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Footer } from "@/components/footer";
+import  Footer  from "@/components/footer/Footer";
 import { useLanguage } from "@/contexts/language-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {

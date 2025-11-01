@@ -1,20 +1,30 @@
+// mbl-paragliding/app/admin/posts/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link"; // Import Link để tạo nút "Huỷ"
+import Link from "next/link";
 import api from "@/lib/api";
 import { authHeader, getToken } from "@/lib/auth";
-import type { PostPayload } from "@/types/frontend/post";
 
-// ===================================================================
-// COMPONENT CHÍNH
-// ===================================================================
+// dùng any để tương thích các field mở rộng (isFixed, fixedKey)
+type AnyPost = any;
+
+// 6 điểm bay cố định (submenu Tin tức)
+type FixedKey = "hoa-binh" | "ha-noi" | "mu-cang-chai" | "yen-bai" | "da-nang" | "sapa";
+const FIXED_NEWS_OPTIONS: { value: FixedKey; label: string }[] = [
+  { value: "hoa-binh", label: "Viên Nam – Hòa Bình" },
+  { value: "ha-noi", label: "Đồi Bù – Chương Mỹ – Hà Nội" },
+  { value: "mu-cang-chai", label: "Khau Phạ – Mù Cang Chải – Yên Bái" },
+  { value: "yen-bai", label: "Trạm Tấu – Yên Bái" },
+  { value: "da-nang", label: "Sơn Trà – Đà Nẵng" },
+  { value: "sapa", label: "Sapa – Lào Cai" },
+];
 
 export default function EditPostPage() {
   const router = useRouter();
   const { id } = useParams();
-  const [form, setForm] = useState<PostPayload | null>(null);
+  const [form, setForm] = useState<AnyPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -57,19 +67,12 @@ export default function EditPostPage() {
     }
   }
 
-  // === Trạng thái Loading / Error (Full screen) ===
-  if (loading) {
-    return <CenteredMessage message="Đang tải bài viết..." />;
-  }
-  if (err && !form) {
-    // Chỉ hiển thị full-screen nếu lỗi xảy ra *trước khi* có form
-    return <CenteredMessage message={err} type="error" />;
-  }
-  if (!form) {
-    return <CenteredMessage message="Không tìm thấy bài viết." type="error" />;
-  }
+  if (loading) return <CenteredMessage message="Đang tải bài viết..." />;
+  if (err && !form) return <CenteredMessage message={err} type="error" />;
+  if (!form) return <CenteredMessage message="Không tìm thấy bài viết." type="error" />;
 
-  // === Style cho các ô input (Dùng chung) ===
+  const isNews = (form.category || "") === "news";
+
   const glassInputStyle = `
     w-full rounded-lg px-3 py-2 bg-white/30 border border-white/40 shadow-sm 
     text-gray-900 placeholder-gray-600 
@@ -82,33 +85,27 @@ export default function EditPostPage() {
       className="fixed inset-0 flex flex-col items-center justify-start pt-24 pb-8 px-4 md:px-8 overflow-y-auto bg-cover bg-center"
       style={{ backgroundImage: "url('/hinh-nen-3.jpg')" }}
     >
-      {/* Overlay mờ nhẹ */}
       <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px] z-0" />
 
-      {/* Container Form chính */}
       <div
         className="relative z-10 w-full max-w-4xl p-6 md:p-8 rounded-2xl 
                    bg-white/15 backdrop-blur-xl border border-white/20 shadow-lg text-gray-800"
       >
-        <h2 className="text-3xl font-bold mb-6 text-gray-900 drop-shadow-lg">
-          Sửa bài viết
-        </h2>
+        <h2 className="text-3xl font-bold mb-6 text-gray-900 drop-shadow-lg">Sửa bài viết</h2>
+
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-gray-800">
-              Tiêu đề
-            </label>
+            <label className="block text-sm font-medium mb-1.5 text-gray-800">Tiêu đề</label>
             <input
               className={glassInputStyle}
-              value={form.title}
+              value={form.title || ""}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-gray-800">
-              Ảnh cover (URL)
-            </label>
+            <label className="block text-sm font-medium mb-1.5 text-gray-800">Ảnh cover (URL)</label>
             <input
               className={glassInputStyle}
               value={form.coverImage || ""}
@@ -116,10 +113,9 @@ export default function EditPostPage() {
               placeholder="https://..."
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-gray-800">
-              Danh mục
-            </label>
+            <label className="block text-sm font-medium mb-1.5 text-gray-800">Danh mục</label>
             <select
               className={glassInputStyle}
               value={form.category || ""}
@@ -128,8 +124,40 @@ export default function EditPostPage() {
               <option value="">Chọn danh mục</option>
               <option value="news">Tin tức</option>
               <option value="knowledge">Kiến thức dù lượn - Học bay</option>
+              <option value="store">Cửa hàng</option>
             </select>
           </div>
+
+          {/* Nhóm (Tin tức): "" = Bài viết mới, còn lại = bài cố định theo điểm bay */}
+          {isNews && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-gray-800">Nhóm (Tin tức)</label>
+              <select
+                className={glassInputStyle}
+                value={form.fixedKey || ""}
+                onChange={(e) => {
+                  const val = e.target.value as "" | FixedKey;
+                  setForm({
+                    ...form,
+                    isPublished: form.isPublished, // giữ nguyên
+                    isFixed: !!val,
+                    fixedKey: val || undefined,
+                  });
+                }}
+              >
+                <option value="">Bài viết mới (không cố định)</option>
+                {FIXED_NEWS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-700 mt-1">
+                Mỗi điểm có tối đa 01 bài cố định. Nếu chọn trùng điểm đã có bài, lưu sẽ báo lỗi.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-1.5 text-gray-800">
               Tags (phân cách bằng dấu phẩy)
@@ -142,35 +170,31 @@ export default function EditPostPage() {
                   ...form,
                   tags: e.target.value
                     .split(",")
-                    .map((s) => s.trim())
+                    .map((s: string) => s.trim())
                     .filter(Boolean),
                 })
               }
               placeholder="ví dụ: dù lượn, sapa, kinh nghiệm"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-gray-800">
-              Nội dung (HTML)
-            </label>
+            <label className="block text-sm font-medium mb-1.5 text-gray-800">Nội dung (HTML)</label>
             <textarea
               className={`${glassInputStyle} min-h-[250px] md:min-h-[300px]`}
-              value={form.content}
+              value={form.content || ""}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
               required
             />
           </div>
+
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <div>
-              <label className="text-sm font-medium text-gray-800 mr-2">
-                Ngôn ngữ:
-              </label>
+              <label className="text-sm font-medium text-gray-800 mr-2">Ngôn ngữ:</label>
               <select
                 className="rounded-lg px-2 py-1 bg-white/30 border border-white/40 shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={form.language}
-                onChange={(e) =>
-                  setForm({ ...form, language: e.target.value as any })
-                }
+                value={form.language || "vi"}
+                onChange={(e) => setForm({ ...form, language: e.target.value })}
               >
                 <option value="vi">vi</option>
                 <option value="en">en</option>
@@ -181,22 +205,18 @@ export default function EditPostPage() {
                 type="checkbox"
                 className="h-4 w-4 rounded text-blue-500 border-white/40 focus:ring-blue-400"
                 checked={!!form.isPublished}
-                onChange={(e) =>
-                  setForm({ ...form, isPublished: e.target.checked })
-                }
+                onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
               />
               Xuất bản
             </label>
           </div>
 
-          {/* Báo lỗi (nếu có) */}
           {err && (
             <p className="text-red-700 font-medium text-sm p-3 bg-red-100/50 rounded-lg border border-red-300">
               {err}
             </p>
           )}
 
-          {/* Nút bấm */}
           <div className="flex items-center gap-4 pt-4">
             <button
               className="rounded-xl bg-blue-500 border border-blue-300 text-white px-6 py-2.5 font-medium shadow-md 
@@ -219,10 +239,6 @@ export default function EditPostPage() {
     </div>
   );
 }
-
-// ===================================================================
-// COMPONENT CON (UI - Cho Loading/Error)
-// ===================================================================
 
 /** Component hiển thị thông báo ở giữa màn hình */
 function CenteredMessage({
