@@ -1,4 +1,3 @@
-// app/api/posts/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Post } from "@/models/Post.model";
@@ -43,7 +42,39 @@ function buildSort(s?: string): string | [string, SortOrder][] | Record<string, 
   return { [v]: "asc" };
 }
 
-/* ---------- CORS/preflight (phòng trường hợp gọi từ form lạ) ---------- */
+/** Chuẩn hoá subcategory cho trang Kiến thức */
+function normalizeSubcategory(v?: string | null): string | undefined {
+  if (!v) return undefined;
+  const s = String(v).trim().toLowerCase();
+
+  const map: Record<string, string> = {
+    // tất cả
+    "all": "all", "tat-ca": "all", "tất cả": "all", "tat ca": "all",
+
+    // căn bản
+    "can-ban": "can-ban", "căn bản": "can-ban", "can ban": "can-ban", "cb": "can-ban",
+
+    // nâng cao
+    "nang-cao": "nang-cao", "nâng cao": "nang-cao", "nang cao": "nang-cao",
+
+    // thermal
+    "thermal": "thermal", "bay thermal": "thermal",
+
+    // xc
+    "xc": "xc", "bay xc": "xc",
+
+    // khí tượng
+    "khi-tuong": "khi-tuong", "khí tượng": "khi-tuong", "khi tuong": "khi-tuong", "meteo": "khi-tuong",
+  };
+
+  if (map[s]) return map[s];
+
+  // Nếu user gửi sẵn key hợp lệ
+  const allow = new Set(["can-ban", "nang-cao", "thermal", "xc", "khi-tuong", "all"]);
+  return allow.has(s) ? s : undefined;
+}
+
+/* ---------- CORS/preflight ---------- */
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
@@ -65,6 +96,10 @@ export async function GET(req: Request) {
     const fixedParam = searchParams.get("fixed");
     const fixedKey = searchParams.get("fixedKey")?.trim() || undefined;
 
+    // Thêm: lọc theo subCategory (cho Kiến thức)
+    const subRaw = searchParams.get("subCategory") ?? searchParams.get("sub") ?? undefined;
+    const sub = normalizeSubcategory(subRaw);
+
     // isPublished / published / status
     const p = toBool(
       searchParams.get("published") ??
@@ -80,16 +115,20 @@ export async function GET(req: Request) {
     const skip = (page - 1) * limit;
     const sort = buildSort(searchParams.get("sort") ?? "-publishedAt,-createdAt");
 
-    // ----- filter -----
+    // ----- filter ----- 
     const filter: Record<string, any> = {};
 
     if (category) filter.category = new RegExp(`^${category}$`, "i");
+
+    // subCategory chỉ áp dụng khi có (và khác "all")
+    if (sub && sub !== "all") {
+      filter.subCategory = new RegExp(`^${sub}$`, "i");
+    }
 
     const fixed = toBool(fixedParam ?? "");
     if (fixed === true) {
       filter.isFixed = true;
     } else if (fixed === false) {
-      // bài không cố định: không phải true hoặc không có field
       filter.$or = [{ isFixed: { $ne: true } }, { isFixed: { $exists: false } }];
     }
     if (fixedKey) filter.fixedKey = fixedKey;
@@ -135,17 +174,13 @@ export async function POST(req: Request) {
     await connectDB();
     const body = await req.json();
 
-    // Chuẩn hoá isPublished từ string
     if (typeof body.isPublished === "string") {
       const b = toBool(body.isPublished);
       if (b !== undefined) body.isPublished = b;
     }
 
-    // Bài cố định?
     if (body.isFixed === true) {
-      // category = news
       body.category = "news";
-      // bắt buộc fixedKey hợp lệ
       if (!body.fixedKey || !FIXED_KEYS.has(String(body.fixedKey))) {
         return NextResponse.json(
           { message: "Bài viết cố định cần 'fixedKey' hợp lệ (hoa-binh/ha-noi/mu-cang-chai/yen-bai/da-nang/sapa)." },
@@ -153,12 +188,10 @@ export async function POST(req: Request) {
         );
       }
     } else {
-      // bài thường: không lưu fixedKey
       delete body.fixedKey;
       body.isFixed = false;
     }
 
-    // slug duy nhất
     if (!body.slug && body.title) {
       const base = slugifyVN(String(body.title)).slice(0, 80) || `post-${Date.now().toString(36)}`;
       let slug = base; let i = 1;
@@ -168,7 +201,6 @@ export async function POST(req: Request) {
     }
     if (!body.slug) body.slug = `post-${Date.now().toString(36)}`;
 
-    // publishedAt
     if (body.isPublished && !body.publishedAt) body.publishedAt = new Date();
 
     try {

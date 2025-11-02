@@ -1,35 +1,48 @@
-"use client";
-
+// app/knowledge/KnowledgeTabs.tsx
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { KNOWLEDGE_SUBS } from "@/lib/knowledge";
 
-export default function KnowledgeTabs() {
-  const pathname = usePathname(); // /knowledge/xc, /knowledge/all...
-  const active = pathname.split("/").pop();
+export const KNOWLEDGE_TABS = [
+  { key: "all",       label: "Tất cả" },
+  { key: "can-ban",   label: "Dù lượn căn bản" },
+  { key: "nang-cao",  label: "Dù lượn nâng cao" },
+  { key: "thermal",   label: "Bay thermal" },
+  { key: "xc",        label: "Bay XC" },
+  { key: "khi-tuong", label: "Khí tượng bay" },
+];
+
+export function KnowledgeTabs({ current = "all" }: { current?: string }) {
+  const cur = (current || "all").toLowerCase();
 
   return (
-    <div className="mx-auto max-w-5xl mt-6">
-      <div className="flex flex-wrap gap-3 rounded-3xl bg-white/15 backdrop-blur border border-white/20 p-3">
-        {KNOWLEDGE_SUBS.map((s) => {
-          const href = `/knowledge/${s.key}`;
-          const isActive = active === s.key;
+    <nav className="w-full flex justify-center">
+      {/* Hộp tabs chỉ rộng theo nội dung -> inline-flex */}
+      <ul className="
+        inline-flex flex-wrap items-center justify-center gap-2
+        rounded-full border border-white/20 bg-white/10 backdrop-blur-md
+        px-2 py-2 shadow-lg
+      ">
+        {KNOWLEDGE_TABS.map(t => {
+          const href = t.key === "all" ? "/knowledge" : `/knowledge?sub=${encodeURIComponent(t.key)}`;
+          const active = cur === t.key;
+
           return (
-            <Link
-              key={s.key}
-              href={href}
-              className={
-                "px-5 py-2 rounded-2xl transition " +
-                (isActive
-                  ? "bg-white text-gray-900 font-semibold shadow"
-                  : "text-white/90 hover:bg-white/20")
-              }
-            >
-              {s.label}
-            </Link>
+            <li key={t.key}>
+              <Link
+                href={href}
+                className={[
+                  "rounded-full text-sm transition-colors",
+                  "px-3 py-1.5", // padding nhỏ -> tổng chiều dài ngắn lại
+                  active
+                    ? "bg-white/30 text-white"
+                    : "text-white/80 hover:text-white hover:bg-white/20",
+                ].join(" ")}
+              >
+                {t.label}
+              </Link>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </nav>
   );
 }
