@@ -1,7 +1,7 @@
 "use client";
 
 import { Navigation } from "@/components/navigation";
-import { Footer } from "@/components/footer";
+import  Footer  from "@/components/footer/Footer";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
 import Link from "next/link";
@@ -113,10 +113,10 @@ const pilotsData = [
 type SafetyCopy = { title: string; items: { title: string; desc: string }[] };
 // ... (Phần SAFETY_FALLBACK không thay đổi)
 const SAFETY_FALLBACK: Record<"vi" | "en" | "fr" | "ru", SafetyCopy> = {
-  vi: { title: "Cam kết an toàn", items: [{ title: "Đào tạo chuyên nghiệp", desc: "Tất cả phi công đều có chứng chỉ quốc tế IPPI..." }, { title: "Thiết bị chuẩn quốc tế", desc: "Sử dụng dù, đai an toàn và mũ bảo hiểm từ các thương hiệu hàng đầu..." }, { title: "Bảo hiểm toàn diện", desc: "Mỗi chuyến bay đều bao gồm gói bảo hiểm an toàn bay cho hành khách..." }] },
-  en: { title: "Safety Commitment", items: [{ title: "Professional training", desc: "All pilots hold international IPPI certification..." }, { title: "International-grade gear", desc: "Using gliders, harnesses, and helmets from top brands..." }, { title: "Comprehensive insurance", desc: "Every flight includes a safety insurance package for passengers..." }] },
-  fr: { title: "Engagement sécurité", items: [{ title: "Formation professionnelle", desc: "Tous les pilotes détiennent la certification internationale IPPI..." }, { title: "Équipement aux normes internationales", desc: "Utilisation de voiles, sellettes et casques de grandes marques..." }, { title: "Assurance complète", desc: "Chaque vol inclut un forfait d'assurance sécurité pour les passagers..." }] },
-  ru: { title: "Гарантия безопасности", items: [{ title: "Профессиональная подготовка", desc: "Все пилоты имеют международную сертификацию IPPI..." }, { title: "Оборудование международного уровня", desc: "Использование парапланов, подвесок и шлемов от ведущих брендов..." }, { title: "Полное страхование", desc: "Каждый полет включает пакет страхования безопасности для пассажиров..." }] },
+  vi: { title: "Cam kết an toàn", items: [{ title: "Đào tạo chuyên nghiệp", desc: "Tất cả phi công đều có chứng chỉ quốc tế APPI..." }, { title: "Thiết bị chuẩn quốc tế", desc: "Sử dụng dù, đai an toàn và mũ bảo hiểm từ các thương hiệu hàng đầu..." }, { title: "Bảo hiểm toàn diện", desc: "Mỗi chuyến bay đều bao gồm gói bảo hiểm an toàn bay cho hành khách..." }] },
+  en: { title: "Safety Commitment", items: [{ title: "Professional training", desc: "All pilots hold international APPI certification..." }, { title: "International-grade gear", desc: "Using gliders, harnesses, and helmets from top brands..." }, { title: "Comprehensive insurance", desc: "Every flight includes a safety insurance package for passengers..." }] },
+  fr: { title: "Engagement sécurité", items: [{ title: "Formation professionnelle", desc: "Tous les pilotes détiennent la certification internationale APPI..." }, { title: "Équipement aux normes internationales", desc: "Utilisation de voiles, sellettes et casques de grandes marques..." }, { title: "Assurance complète", desc: "Chaque vol inclut un forfait d'assurance sécurité pour les passagers..." }] },
+  ru: { title: "Гарантия безопасности", items: [{ title: "Профессиональная подготовка", desc: "Все пилоты имеют международную сертификацию APPI..." }, { title: "Оборудование международного уровня", desc: "Использование парапланов, подвесок и шлемов от ведущих брендов..." }, { title: "Полное страхование", desc: "Каждый полет включает пакет страхования безопасности для пассажиров..." }] },
 };
 
 export default function PilotsPage() {

@@ -188,7 +188,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "Bay trên thung lũng Mường Hoa huyền ảo, ngắm ruộng bậc thang và dãy Hoàng Liên trong biển mây.",
       landscape: "Mây luồn – ruộng bậc thang – Fansipan",
-      duration: "10 – 20 phút",
+      duration: "8 – 15 phút",
     },
     en: {
       name: "Muong Hoa (Sa Pa)",
@@ -197,7 +197,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "Float above magical Muong Hoa Valley, with layered rice terraces and the Hoang Lien range rising through a sea of clouds.",
       landscape: "Cloud streets – rice terraces – Fansipan",
-      duration: "10–20 minutes",
+      duration: "8–15 minutes",
     },
     fr: {
       name: "Mường Hoa (Sa Pa)",
@@ -206,7 +206,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "Planez au-dessus de la vallée féerique de Mường Hoa, ses rizières en terrasses et la chaîne Hoàng Liên émergeant d’une mer de nuages.",
       landscape: "Lignes de nuages – rizières en terrasses – Fansipan",
-      duration: "10–20 minutes",
+      duration: "8–15 minutes",
     },
     ru: {
       name: "Муонг Хоа (Са Па)",
@@ -215,14 +215,14 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "Парите над волшебной долиной Муонг Хоа: рисовые террасы и хребет Хоанглиен, поднимающийся из моря облаков.",
       landscape: "Облачные потоки – рисовые террасы – Фансипан",
-      duration: "10–20 минут",
+      duration: "8–15 минут",
     },
   },
   "son-tra": {
     vi: {
       name: "Sơn Trà",
       title: "Lướt Trên Bán Đảo Sơn Trà",
-      altitude: "300 – 700 m",
+      altitude: "600 – 800 m",
       description:
         "Hướng vịnh Đà Nẵng với gió biển ổn định, nhìn toàn cảnh thành phố và bãi biển.",
       landscape: "Bán đảo – đại dương – vịnh Đà Nẵng",
@@ -231,7 +231,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
     en: {
       name: "Son Tra",
       title: "Glide Over Son Tra Peninsula",
-      altitude: "300–700 m",
+      altitude: "600–800 m",
       description:
         "Face Da Nang Bay with steady sea breeze, taking in panoramic views of the city and coastline.",
       landscape: "Peninsula – ocean – Da Nang Bay",
@@ -240,7 +240,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
     fr: {
       name: "Sơn Trà",
       title: "Glisser au-dessus de la presqu’île de Sơn Trà",
-      altitude: "300–700 m",
+      altitude: "600–800 m",
       description:
         "Face à la baie de Đà Nẵng, la brise marine régulière offre une vue panoramique sur la ville et le littoral.",
       landscape: "Presqu’île – océan – baie de Đà Nẵng",
@@ -249,7 +249,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
     ru: {
       name: "Шон Тра",
       title: "Полёт над полуостровом Шон Тра",
-      altitude: "300–700 м",
+      altitude: "600–800 м",
       description:
         "Смотрим на бухту Дананга при устойчивом морском бризе — панорама города и побережья.",
       landscape: "Полуостров – океан – бухта Дананга",
@@ -264,7 +264,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "Một trong những cung đèo đẹp nhất Việt Nam, đặc biệt rực rỡ mùa lúa chín.",
       landscape: "Đèo cao – thung lũng – mùa vàng",
-      duration: "10 – 20 phút",
+      duration: "8 – 15 phút",
     },
     en: {
       name: "Khau Pha Pass",
@@ -273,7 +273,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "One of Vietnam’s most stunning mountain passes, especially radiant during the golden rice harvest.",
       landscape: "High pass – valley – golden season",
-      duration: "10–20 minutes",
+      duration: "8–15 minutes",
     },
     fr: {
       name: "Col de Khau Phạ",
@@ -282,7 +282,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "L’un des plus beaux cols du Vietnam, particulièrement éclatant à la saison du riz mûr.",
       landscape: "Haut col – vallée – saison dorée",
-      duration: "10–20 minutes",
+      duration: "8–15 minutes",
     },
     ru: {
       name: "Перевал Кхау Фа",
@@ -291,7 +291,7 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
       description:
         "Один из самых красивых перевалов Вьетнама, особенно впечатляет в сезон золотых рисовых полей.",
       landscape: "Высокий перевал – долина – золотой сезон",
-      duration: "10–20 минут",
+      duration: "8–15 минут",
     },
   },
   "tram-tau": {
@@ -336,76 +336,76 @@ const spotCopyI18n: Record<SpotKey, Record<Lang, SpotCopy>> = {
     vi: {
       name: "Viên Nam",
       title: "Điểm Bay Gần Hà Nội",
-      altitude: "400 – 700 m",
+      altitude: "600 – 1000 m",
       description:
         "Phù hợp luyện tập, di chuyển thuận tiện từ trung tâm Hà Nội.",
       landscape: "Đồi núi – gần Hà Nội",
-      duration: "7 – 12 phút",
+      duration: "10 – 20 phút",
     },
     en: {
       name: "Vien Nam",
       title: "Closest Flying Spot to Hanoi",
-      altitude: "400–700 m",
+      altitude: "600–1000 m",
       description:
         "Great for practice with convenient access from central Hanoi.",
       landscape: "Hills – near Hanoi",
-      duration: "7–12 minutes",
+      duration: "10–20 minutes",
     },
     fr: {
       name: "Viên Nam",
       title: "Site de vol proche de Hanoï",
-      altitude: "400–700 m",
+      altitude: "600–1000 m",
       description:
         "Idéal pour s’entraîner, accès pratique depuis le centre de Hanoï.",
       landscape: "Collines – proche de Hanoï",
-      duration: "7–12 minutes",
+      duration: "10–20 minutes",
     },
     ru: {
       name: "Вьен Нам",
       title: "Площадка рядом с Ханоем",
-      altitude: "400–700 м",
+      altitude: "600–1000 м",
       description:
         "Подходит для тренировок, удобно добираться из центра Ханоя.",
       landscape: "Холмы – рядом с Ханоем",
-      duration: "7–12 минут",
+      duration: "10–20 минут",
     },
   },
   "doi-bu": {
     vi: {
       name: "Đồi Bù",
       title: "Điểm Bay Phổ Biến Cuối Tuần",
-      altitude: "300 – 600 m",
+      altitude: "600 – 900 m",
       description:
         "Gần Hà Nội, dễ tiếp cận, phù hợp cho người mới trải nghiệm.",
       landscape: "Đồi núi – thuận tiện – dễ tiếp cận",
-      duration: "7 – 12 phút",
+      duration: "10 – 20 phút",
     },
     en: {
       name: "Doi Bu",
       title: "Popular Weekend Flying Spot",
-      altitude: "300–600 m",
+      altitude: "600–900 m",
       description:
         "Close to Hanoi and easy to access — perfect for first-timers.",
       landscape: "Hills – convenient – accessible",
-      duration: "7–12 minutes",
+      duration: "10–20 minutes",
     },
     fr: {
       name: "Đồi Bù",
       title: "Site de vol prisé le week-end",
-      altitude: "300–600 m",
+      altitude: "600–900 m",
       description:
         "Proche de Hanoï et facile d’accès — idéal pour une première expérience.",
       landscape: "Collines – pratique – accessible",
-      duration: "7–12 minutes",
+      duration: "10–20 minutes",
     },
     ru: {
       name: "Дой Бу",
       title: "Популярная точка на выходных",
-      altitude: "300–600 м",
+      altitude: "600–900 м",
       description:
         "Близко к Ханою и удобно добираться — отлично для новичков.",
       landscape: "Холмы – удобно – доступно",
-      duration: "7–12 минут",
+      duration: "10–20 минут",
     },
   },
   dalat: {

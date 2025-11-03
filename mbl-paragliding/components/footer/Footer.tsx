@@ -13,10 +13,10 @@ export type FixedKey =
 export const FIXED_SPOTS: { key: FixedKey; name: string }[] = [
   { key: "hoa-binh",     name: "Viên Nam - Hòa Bình" },
   { key: "ha-noi",       name: "Đồi Bù - Chương Mỹ - Hà Nội" },
-  { key: "mu-cang-chai", name: "Khau Phạ - Mù Cang Chải - Yên Bái" },
-  { key: "yen-bai",      name: "Trạm Tấu - Yên Bái" },
+  { key: "mu-cang-chai", name: "Khau phạ - Tú Lệ - Lào Cai" },
+  { key: "yen-bai",      name: "Trạm Tấu - Lào Cai" },
   { key: "da-nang",      name: "Sơn Trà - Đà Nẵng" },
-  { key: "sapa",         name: "Sapa, Lào Cai, Vietnam" },
+  { key: "sapa",         name: "Sapa - Lào Cai" },
 ];
 
 export default function Footer() {

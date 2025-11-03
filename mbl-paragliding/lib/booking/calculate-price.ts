@@ -235,8 +235,8 @@ export const LOCATIONS: Record<LocationKey, LocationConfig> = {
           fr: "Flycam (drone)",
           ru: "Flycam (дрон)",
         },
-        pricePerPersonVND: 300_000,
-        pricePerPersonUSD: 12,
+        pricePerPersonVND: 500_000,
+        pricePerPersonUSD: 20,
       },
       camera360: {
         label: {

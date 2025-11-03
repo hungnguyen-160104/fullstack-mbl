@@ -592,7 +592,7 @@ export default function HomePage() {
                 title: t?.contact?.phone ?? "Điện thoại",
                 lines: [
                   "+84 964 073 555 (Mr. My)",
-                  "+84 979 702 218 (Ms. Yupi)",
+                  "+84 979 702 812 (Ms. Yupi)",
                   t?.contact?.support247 ?? "Hỗ trợ 24/7",
                 ],
               },
@@ -600,7 +600,7 @@ export default function HomePage() {
               {
                 icon: MapPin,
                 title: t?.contact?.address ?? "Địa chỉ",
-                lines: ["Chương Mỹ (Hà Nội)", "Đèo Khau Phạ (Yên Bái)", " Sapa (Lào Cai)", " Sơn Trà (Đà Nẵng)", "Việt Nam"],
+                lines: ["Chương Mỹ (Hà Nội)", "Đèo Khau Phạ (Yên Bái)", " Sapa (Lào Cai)", " Sơn Trà (Đà Nẵng)", ],
               },
               { icon: Clock, title: t?.contact?.workingHours ?? "Giờ làm việc", lines: ["Thứ 2 - CN", "6:00 - 19:00"] },
             ].map((info, index) => (

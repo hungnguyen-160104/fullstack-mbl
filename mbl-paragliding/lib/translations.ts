@@ -27,14 +27,14 @@ export const translations = {
   subtitle: "Mebayluon Paragliding – nơi những giấc mơ bay cao",
   description: [
     "Tự hào là đơn vị bay dù lượn chuyên nghiệp đầu tiên tại Việt Nam với đội ngũ phi công có nhiều giờ bay nhất Việt Nam."," Chúng tôi đồng hành cùng bạn trong những chuyến bay đầy cảm xúc. ",
-    "Cam kết mọi trang thiết bị bay đều đạt tiêu chuẩn quốc tế, đảm bảo an toàn tuyệt đối và luôn mang đến trải nghiệm bay tự do và đáng nhớ nhất cho bạn.",
+    "Cam kết mọi trang thiết bị bay đều đạt tiêu chuẩn quốc tế và luôn mang đến trải nghiệm bay tự do và đáng nhớ nhất cho bạn.",
   ],
 },
 
 
     spots: {
       title: "ĐIỂM BAY NỔI BẬT",
-      subtitle: "Khám phá vẻ đẹp Việt Nam từ trên cao với những điểm bay tuyệt vời nhất",
+      subtitle: "Khám phá vẻ đẹp Việt Nam từ trên cao với những điểm bay tuyệt nhất",
       viewDetails: "Xem Chi Tiết",
       locations: {
         muongHoaSapa: {
@@ -165,7 +165,7 @@ export const translations = {
       contactNow: "Liên hệ ngay",
       phone: "Điện thoại",
       support247: "Hỗ trợ 24/7",
-      address: "Địa chỉ",
+      address: "Văn phòng",
   workingHours: "Giờ làm việc",
       social: {
         facebook: "Theo dõi fanpage để cập nhật tin tức mới nhất",
@@ -318,14 +318,14 @@ export const translations = {
       home: "Home",
       about: "About Us",
       pilots: "Pilots",
-      homestay: "Homestay & Coffee",
-      booking: "Book Tour",
+      homestay: "Homestay & Café",
+      booking: "Book Flight",
       preNotice: "Pre-Flight Preparation",
       contact: "Contact",
       bookNow: "Book Now",
-      store: "Store",
-      blog: "Blog",
-      knowledge: "Paragliding Knowledge – Learn to Fly",
+      store: "Shop",
+      blog: "News",
+      knowledge: "Learn to Fly",
 
     },
     hero: {
@@ -372,13 +372,13 @@ export const translations = {
         tramTau: {
           name: "Tram Tau",
           location: "Yen Bai",
-          description: "Fly over Tram Tau plateau",
+          description: "Fly over Muong Lo plateau",
           highlight: "Land of floating white clouds",
         },
         vienNam: {
           name: "Vien Nam",
           location: "Hoa Binh",
-          description: "Fly over Vien Nam valley",
+          description: "Fly over highest mountain of Hanoi",
           highlight: "Majestic mountain scenery",
         },
         doiBu: {
@@ -685,7 +685,7 @@ knowledge: "Connaissances du parapente – Apprendre à voler",
         tramTau: {
           name: "Tram Tau",
           location: "Yen Bai",
-          description: "Volez au-dessus du plateau de Tram Tau",
+          description: "Volez au-dessus du plateau de Muong Lo",
           highlight: "Terre de nuages blancs flottants",
         },
         vienNam: {
@@ -953,7 +953,7 @@ items: {
       contact: "Контакты",
       bookNow: "Забронировать",
       store: "Магазин",
-      blog: "Блог",
+      blog: "Новость",
       knowledge: "Парапланеризм — Учись летать",
 
     },

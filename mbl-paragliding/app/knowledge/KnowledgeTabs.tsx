@@ -6,7 +6,7 @@ export const KNOWLEDGE_TABS = [
   { key: "can-ban",   label: "Dù lượn căn bản" },
   { key: "nang-cao",  label: "Dù lượn nâng cao" },
   { key: "thermal",   label: "Bay thermal" },
-  { key: "xc",        label: "Bay XC" },
+  { key: "xc",        label: "Dù lượn gắn động cơ" },
   { key: "khi-tuong", label: "Khí tượng bay" },
 ];
 
