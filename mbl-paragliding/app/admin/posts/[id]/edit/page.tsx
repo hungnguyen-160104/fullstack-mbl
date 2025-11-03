@@ -1,4 +1,3 @@
-// mbl-paragliding/app/admin/posts/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -28,6 +27,10 @@ export default function EditPostPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  // Trạng thái upload ảnh
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+
   // 🧭 Kiểm tra token + tải bài viết
   useEffect(() => {
     if (!getToken()) {
@@ -47,6 +50,29 @@ export default function EditPostPage() {
       }
     })();
   }, [id, router]);
+
+  // ====== Upload ảnh từ file -> Cloudinary (qua backend) ======
+  async function handlePickFile(file: File) {
+    if (!file) return;
+    setUploading(true);
+    setUploadErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file); // trùng với .single("file") phía server
+
+      const resp = await api<{ url: string; publicId?: string }>("/api/uploads/image", {
+        method: "POST",
+        headers: { ...authHeader() }, // KHÔNG set Content-Type cho FormData
+        body: fd,
+      });
+
+      setForm((f: AnyPost) => ({ ...(f || {}), coverImage: resp.url }));
+    } catch (e: any) {
+      setUploadErr(e?.message || "Upload ảnh thất bại");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,6 +120,7 @@ export default function EditPostPage() {
         <h2 className="text-3xl font-bold mb-6 text-gray-900 drop-shadow-lg">Sửa bài viết</h2>
 
         <form onSubmit={onSubmit} className="space-y-4">
+          {/* Title */}
           <div>
             <label className="block text-sm font-medium mb-1.5 text-gray-800">Tiêu đề</label>
             <input
@@ -104,16 +131,52 @@ export default function EditPostPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-gray-800">Ảnh cover (URL)</label>
+          {/* Cover: URL + Nút upload Cloudinary */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-800">Ảnh cover</label>
+
+            {/* Nhập URL thủ công (giữ như cũ) */}
             <input
               className={glassInputStyle}
               value={form.coverImage || ""}
               onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-              placeholder="https://..."
+              placeholder="Dán link ảnh (https://...) hoặc dùng nút tải ảnh lên bên dưới"
             />
+
+            {/* Nút tải ảnh lên Cloudinary */}
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 rounded-lg bg-white/40 border border-white/50 px-4 py-2.5 text-gray-900 cursor-pointer hover:bg-white/60">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handlePickFile(f);
+                    e.currentTarget.value = ""; // cho phép chọn lại cùng 1 file vẫn trigger
+                  }}
+                />
+                <span>📤 Tải ảnh lên Cloudinary</span>
+              </label>
+
+              {uploading && <span className="text-sm text-gray-800">Đang tải ảnh…</span>}
+              {uploadErr && <span className="text-sm text-red-700">{uploadErr}</span>}
+            </div>
+
+            {/* Preview */}
+            {form.coverImage && (
+              <div className="rounded-lg border border-white/30 bg-white/20 p-3">
+                <img
+                  src={form.coverImage}
+                  alt="preview"
+                  className="max-h-48 rounded-lg shadow"
+                />
+                <p className="text-xs text-gray-700 mt-1 break-all">{form.coverImage}</p>
+              </div>
+            )}
           </div>
 
+          {/* Danh mục */}
           <div>
             <label className="block text-sm font-medium mb-1.5 text-gray-800">Danh mục</label>
             <select
@@ -158,6 +221,7 @@ export default function EditPostPage() {
             </div>
           )}
 
+          {/* Tags */}
           <div>
             <label className="block text-sm font-medium mb-1.5 text-gray-800">
               Tags (phân cách bằng dấu phẩy)
@@ -178,6 +242,7 @@ export default function EditPostPage() {
             />
           </div>
 
+          {/* Content */}
           <div>
             <label className="block text-sm font-medium mb-1.5 text-gray-800">Nội dung (HTML)</label>
             <textarea
@@ -188,6 +253,7 @@ export default function EditPostPage() {
             />
           </div>
 
+          {/* Options */}
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <div>
               <label className="text-sm font-medium text-gray-800 mr-2">Ngôn ngữ:</label>
@@ -211,12 +277,14 @@ export default function EditPostPage() {
             </label>
           </div>
 
+          {/* Error */}
           {err && (
             <p className="text-red-700 font-medium text-sm p-3 bg-red-100/50 rounded-lg border border-red-300">
               {err}
             </p>
           )}
 
+          {/* Actions */}
           <div className="flex items-center gap-4 pt-4">
             <button
               className="rounded-xl bg-blue-500 border border-blue-300 text-white px-6 py-2.5 font-medium shadow-md 

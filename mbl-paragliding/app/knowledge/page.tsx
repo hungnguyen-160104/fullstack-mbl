@@ -46,7 +46,7 @@ export default async function KnowledgeAllPage({
       <div className="absolute inset-0 bg-black/40 z-0" />
       <main className="container mx-auto px-4 py-16 relative z-10 text-white">
         <h1 className="text-5xl md:text-6xl font-extrabold mb-8 text-center drop-shadow-lg">
-          Kiến thức dù lượn
+          KIẾN THỨC DÙ LƯỢN
         </h1>
 
         <div className="mb-8">
