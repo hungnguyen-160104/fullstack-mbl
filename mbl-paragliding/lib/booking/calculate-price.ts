@@ -113,12 +113,7 @@ export const LOCATIONS: Record<LocationKey, LocationConfig> = {
         "Сертификат",
       ],
     },
-    excluded: {
-      vi: [],
-      en: [],
-      fr: [],
-      ru: [],
-    },
+    excluded: { vi: [], en: [], fr: [], ru: [] },
     coordinates: {
       takeoff: "https://maps.app.goo.gl/bGtKFTuxyZvJhsJZ9",
       landing: "https://maps.app.goo.gl/mYnh4KJVk3aQZLYC6",
@@ -205,12 +200,7 @@ export const LOCATIONS: Record<LocationKey, LocationConfig> = {
         "Сувенир",
       ],
     },
-    excluded: {
-      vi: [],
-      en: [],
-      fr: [],
-      ru: [],
-    },
+    excluded: { vi: [], en: [], fr: [], ru: [] },
     coordinates: {
       takeoff: "https://maps.app.goo.gl/Z9X6BnNV4eaUKTE29",
       landing: "https://maps.app.goo.gl/QJWD6Em4b9RYYQMc8",
@@ -324,7 +314,7 @@ export const LOCATIONS: Record<LocationKey, LocationConfig> = {
           ru: "Трансфер туда‑обратно от BigC Thang Long",
         },
         pricePerPersonVND: 200_000,
-        pricePerPersonUSD: 8, // gần đúng từ tài liệu
+        pricePerPersonUSD: 8,
       },
       camera360: {
         label: {
@@ -420,16 +410,37 @@ type ComputeParams = {
   location: LocationKey;
   guestsCount: number;
   dateISO?: string;
+
+  /** backward compat */
   addons?: Partial<Record<AddonKey, boolean>>;
+
+  /** NEW */
+  addonsQty?: Partial<Record<AddonKey, number>>;
 };
 
 export type ComputeResult = {
-  basePricePerPerson: number;
-  addonsPerPerson: Record<AddonKey, number>;
-  discountPerPerson: number;
-  totalPerPerson: number;
-  totalAfterDiscount: number;
   currency: "VND" | "USD";
+  guestsCount: number;
+
+  basePricePerPerson: number;
+  baseTotal: number;
+
+  /** backward compat: đơn giá addon (chỉ set >0 nếu qty>0) */
+  addonsPerPerson: Record<AddonKey, number>;
+
+  /** NEW: breakdown theo qty */
+  addonsUnitPrice: Record<AddonKey, number>;
+  addonsQty: Record<AddonKey, number>;
+  addonsTotal: Record<AddonKey, number>;
+  addonsGrandTotal: number;
+
+  discountPerPerson: number;
+  discountTotal: number;
+
+  /** Trung bình/khách (đã tính addons theo qty -> chia đều) */
+  totalPerPerson: number;
+
+  totalAfterDiscount: number;
 };
 
 /** Backward-compat: trả VND */
@@ -437,46 +448,66 @@ export function computePrice(p: ComputeParams): ComputeResult {
   return computePriceByCurrency(p, "VND");
 }
 
-export function computePriceByLang(
-  p: ComputeParams,
-  lang: LangCode
-): ComputeResult {
+export function computePriceByLang(p: ComputeParams, lang: LangCode): ComputeResult {
   return computePriceByCurrency(p, currencyOf(lang));
 }
 
-function computePriceByCurrency(
-  p: ComputeParams,
-  currency: "VND" | "USD"
-): ComputeResult {
-  const { location, guestsCount, dateISO, addons = {} } = p;
+function clampInt(v: unknown, min: number, max: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return min;
+  return Math.max(min, Math.min(max, Math.floor(n)));
+}
+
+function computePriceByCurrency(p: ComputeParams, currency: "VND" | "USD"): ComputeResult {
+  const {
+    location,
+    guestsCount: rawGuests,
+    dateISO,
+    addons = {},
+    addonsQty = {},
+  } = p;
+
+  const guestsCount = Math.max(1, clampInt(rawGuests ?? 1, 1, 100));
   const cfg = LOCATIONS[location];
 
-  const base =
-    currency === "VND" ? cfg.basePriceVND(dateISO) : cfg.basePriceUSD(dateISO);
+  const base = currency === "VND" ? cfg.basePriceVND(dateISO) : cfg.basePriceUSD(dateISO);
 
-  const addonsPerPerson: Record<AddonKey, number> = {
-    pickup: 0,
-    flycam: 0,
-    camera360: 0,
-  };
+  const addonsPerPerson: Record<AddonKey, number> = { pickup: 0, flycam: 0, camera360: 0 };
+  const addonsUnitPrice: Record<AddonKey, number> = { pickup: 0, flycam: 0, camera360: 0 };
+  const addonsQtyNorm: Record<AddonKey, number> = { pickup: 0, flycam: 0, camera360: 0 };
+  const addonsTotal: Record<AddonKey, number> = { pickup: 0, flycam: 0, camera360: 0 };
 
-  (Object.keys(addons) as AddonKey[]).forEach((key) => {
-    if (!addons[key]) return;
+  (["pickup", "flycam", "camera360"] as AddonKey[]).forEach((key) => {
     const a = cfg.addons[key];
-    let price =
-      currency === "VND" ? a.pricePerPersonVND : a.pricePerPersonUSD;
-    if (price == null) {
-      // fallback: quy đổi từ VND nếu có
+
+    // unit price
+    let unit = currency === "VND" ? a.pricePerPersonVND : a.pricePerPersonUSD;
+    if (unit == null) {
       if (currency === "USD" && a.pricePerPersonVND != null) {
-        price = toUSDfromVND(a.pricePerPersonVND);
+        unit = toUSDfromVND(a.pricePerPersonVND);
       } else {
-        price = 0;
+        unit = 0;
       }
     }
-    addonsPerPerson[key] = price!;
+    addonsUnitPrice[key] = unit ?? 0;
+
+    // qty (NEW) ưu tiên addonsQty; fallback boolean -> guestsCount
+    let qty = addonsQty?.[key];
+    if (qty == null) qty = addons?.[key] ? guestsCount : 0;
+
+    qty = clampInt(qty ?? 0, 0, guestsCount);
+
+    // nếu addon không available (unit=0 vì null) thì ép qty=0
+    if (!addonsUnitPrice[key]) qty = 0;
+
+    addonsQtyNorm[key] = qty;
+    addonsTotal[key] = addonsUnitPrice[key] * qty;
+
+    // backward compat
+    addonsPerPerson[key] = qty > 0 ? addonsUnitPrice[key] : 0;
   });
 
-  const addonsSum = Object.values(addonsPerPerson).reduce((s, x) => s + x, 0);
+  const addonsGrandTotal = Object.values(addonsTotal).reduce((s, x) => s + x, 0);
 
   // giảm theo nhóm
   let discount = 0;
@@ -487,31 +518,40 @@ function computePriceByCurrency(
     }
   }
 
-  const totalPerPerson = base + addonsSum - discount;
-  const totalAfterDiscount = totalPerPerson * Math.max(guestsCount, 1);
+  const baseTotal = base * guestsCount;
+  const discountTotal = discount * guestsCount;
+
+  const totalAfterDiscount = baseTotal + addonsGrandTotal - discountTotal;
+
+  // trung bình/khách (làm tròn để tránh số lẻ khó nhìn)
+  const totalPerPerson = Math.round(totalAfterDiscount / guestsCount);
 
   return {
+    currency,
+    guestsCount,
+
     basePricePerPerson: base,
+    baseTotal,
+
     addonsPerPerson,
+    addonsUnitPrice,
+    addonsQty: addonsQtyNorm,
+    addonsTotal,
+    addonsGrandTotal,
+
     discountPerPerson: discount,
+    discountTotal,
+
     totalPerPerson,
     totalAfterDiscount,
-    currency,
   };
 }
 
 /** Helpers để lấy tên địa điểm / label addon theo ngôn ngữ */
-export function getLocationName(
-  loc: LocationConfig,
-  lang: LangCode
-): string {
+export function getLocationName(loc: LocationConfig, lang: LangCode): string {
   return loc.name[lang] ?? loc.name.vi;
 }
-export function getAddonLabel(
-  cfg: LocationConfig,
-  key: AddonKey,
-  lang: LangCode
-): string {
+export function getAddonLabel(cfg: LocationConfig, key: AddonKey, lang: LangCode): string {
   const a = cfg.addons[key];
   return a?.label?.[lang] ?? a?.label?.vi ?? key;
 }

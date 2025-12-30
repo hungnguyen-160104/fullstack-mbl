@@ -7,30 +7,110 @@ import type { Post, StoreCategory } from "@/types/frontend/post";
 import { Loader2 } from "lucide-react";
 import clsx from "clsx";
 
-const CATEGORIES = [
-  { key: "all", title: "Tất cả" },
-  { key: "thiet-bi-bay", title: "Thiết bị bay" },
-  { key: "phu-kien", title: "Phụ kiện" },
-  { key: "sach-du-luon", title: "Sách dù lượn" },
-  { key: "khoa-hoc-du-luon", title: "Khoá học dù lượn" },
-] as const;
+import {
+  getStoreTexts,
+  STORE_CATEGORY_KEYS_EXCEPT_ALL,
+  type StoreLang,
+} from "@/lib/store-texts";
+
+// ====== HÀM CHUẨN HOÁ & BẮT NGÔN NGỮ HIỆN TẠI ======
+function normalizeLang(value: string | null | undefined): StoreLang | null {
+  if (!value) return null;
+  const v = value.toLowerCase();
+
+  if (v.startsWith("vi")) return "vi";
+  if (v.startsWith("en")) return "en";
+  if (v.startsWith("fr")) return "fr";
+  if (v.startsWith("ru")) return "ru";
+
+  return null;
+}
+
+function detectLang(): StoreLang {
+  // 1. localStorage: tìm bất kỳ value nào = vi/en/fr/ru
+  if (typeof window !== "undefined" && "localStorage" in window) {
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (!key) continue;
+        const val = window.localStorage.getItem(key);
+        const norm = normalizeLang(val);
+        if (norm) return norm;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Cookie: lang / language / locale / i18nextLng / NEXT_LOCALE ...
+  if (typeof document !== "undefined") {
+    const cookieMatch = document.cookie.match(
+      /(?:lang|language|locale|i18nextLng|NEXT_LOCALE|pll_language|trp_language|wp-wpml_current_language)=([^;]+)/i
+    );
+    const cookieLang = normalizeLang(cookieMatch?.[1]);
+    if (cookieLang) return cookieLang;
+  }
+
+  // 3. navigator.language (trình duyệt)
+  if (typeof navigator !== "undefined") {
+    const navLang = normalizeLang(navigator.language);
+    if (navLang) return navLang;
+  }
+
+  // 4. <html lang="xx">
+  if (typeof document !== "undefined") {
+    const htmlLang = normalizeLang(document.documentElement.lang);
+    if (htmlLang) return htmlLang;
+  }
+
+  // 5. URL: /fr/... hoặc ?lang=fr
+  if (typeof window !== "undefined") {
+    const { pathname, search } = window.location;
+
+    const segments = pathname.split("/").filter(Boolean);
+    const firstSeg = normalizeLang(segments[0]);
+    if (firstSeg) return firstSeg;
+
+    const params = new URLSearchParams(search);
+    const qpLang =
+      normalizeLang(params.get("lang")) ||
+      normalizeLang(params.get("locale"));
+    if (qpLang) return qpLang;
+  }
+
+  // fallback
+  return "vi";
+}
+// ==============================================
 
 export default function StoreHomePage() {
   const [active, setActive] = useState<StoreCategory | "all">("all");
   const [products, setProducts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lang, setLang] = useState<StoreLang>("vi");
+
+  // Lấy ngôn ngữ thực tế khi client mount (sau hydration → không gây lỗi)
+  useEffect(() => {
+    const detected = detectLang();
+    setLang(detected);
+    if (typeof window !== "undefined") {
+      console.log("Store page lang =", detected);
+    }
+  }, []);
+
+  const ui = getStoreTexts(lang);
 
   async function fetchProducts(category: StoreCategory | "all") {
     setLoading(true);
     try {
       if (category === "all") {
-        // Gọi song song các danh mục để gom toàn bộ sản phẩm
         const results = await Promise.all(
-          CATEGORIES.filter((c) => c.key !== "all").map((c) =>
-            listProductsByCategory({ category: c.key as StoreCategory })
+          STORE_CATEGORY_KEYS_EXCEPT_ALL.map((cat) =>
+            listProductsByCategory({ category: cat })
           )
         );
-        const merged = results.flatMap((r) => r.items);
+
+        const merged = results.flatMap((result) => result.items);
         setProducts(merged);
       } else {
         const res = await listProductsByCategory({ category });
@@ -46,6 +126,7 @@ export default function StoreHomePage() {
 
   useEffect(() => {
     fetchProducts("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -57,12 +138,12 @@ export default function StoreHomePage() {
       <section className="relative z-10 py-24">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-white text-center mb-10">
-            CỬA HÀNG
+            {ui.title}
           </h1>
 
-          {/* 🔹 Thanh menu ngang glassmorphism */}
-          <div className="w-fit mx-auto flex flex-wrap justify-center gap-3 mb-12 bg-white/20 backdrop-blur-md border border-white/30 shadow-lg rounded-2xl px-6 py-3">
-            {CATEGORIES.map((c) => (
+          {/* Thanh menu ngang glassmorphism */}
+          <div className="w-fit mx-auto flex flex-wrap justify-center gap-3 bg-white/10 backdrop-blur-md border border-white/30 shadow-lg rounded-2xl px-6 py-3 mb-12">
+            {ui.categories.map((c) => (
               <button
                 key={c.key}
                 onClick={() => {
@@ -81,7 +162,7 @@ export default function StoreHomePage() {
             ))}
           </div>
 
-          {/* 🔹 Danh sách sản phẩm */}
+          {/* Danh sách sản phẩm */}
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="w-10 h-10 text-white animate-spin" />
@@ -94,7 +175,7 @@ export default function StoreHomePage() {
             </div>
           ) : (
             <p className="text-center text-white text-lg mt-10">
-              Không có sản phẩm nào trong danh mục này.
+              {ui.emptyCategory}
             </p>
           )}
         </div>

@@ -5,9 +5,9 @@ import {
   LOCATIONS,
   computePriceByLang,
   formatByLang,
+  type AddonKey,
 } from "@/lib/booking/calculate-price";
 import { useLangCode, useBookingText } from "@/lib/booking/translations-booking";
-import type { AddonKey } from "@/lib/booking/calculate-price"; // <-- thêm dòng này
 
 export default function PriceSummary() {
   const t = useBookingText();
@@ -19,17 +19,15 @@ export default function PriceSummary() {
       location: data.location,
       guestsCount: data.guestsCount,
       dateISO: data.dateISO,
-      addons: data.addons,
+      addons: data.addons,         // backward compat
+      addonsQty: data.addonsQty,   // NEW
     },
     lang
   );
 
   const cfg = LOCATIONS[data.location];
 
-  // 👇 QUAN TRỌNG: ép kiểu entries để k có 'any'
-  const addonEntries = Object.entries(
-    totals.addonsPerPerson
-  ) as [AddonKey, number][];
+  const addonQtyEntries = Object.entries(totals.addonsQty) as [AddonKey, number][];
 
   return (
     <div className="rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 shadow-xl p-6 text-white">
@@ -52,27 +50,29 @@ export default function PriceSummary() {
           <span>{formatByLang(lang, totals.basePricePerPerson, totals.basePricePerPerson)}</span>
         </div>
 
-        {/* 👇 Không còn lỗi ts7053 nữa */}
-        {addonEntries
-          .filter(([, v]) => v > 0)
-          .map(([k, v]: [AddonKey, number]) => (
-            <div key={k} className="flex justify-between">
-              <span>
-                {t.labels.addonSurcharge(
-                  cfg.addons[k].label[lang] ?? cfg.addons[k].label.vi
-                )}
-              </span>
-              <span>
-                {formatByLang(lang, v, v)} / {lang === "vi" ? "khách" : "pax"}
-              </span>
-            </div>
-          ))}
+        {/* NEW: addons theo qty */}
+        {addonQtyEntries
+          .filter(([, qty]) => qty > 0)
+          .map(([k, qty]) => {
+            const label = cfg.addons[k].label[lang] ?? cfg.addons[k].label.vi;
+            const lineTotal = totals.addonsTotal[k] || 0;
+            return (
+              <div key={k} className="flex justify-between">
+                <span>
+                  {t.labels.addonSurcharge(label)}{" "}
+                  <span className="text-white/80">× {qty}</span>
+                </span>
+                <span>{formatByLang(lang, lineTotal, lineTotal)}</span>
+              </div>
+            );
+          })}
 
         {totals.discountPerPerson > 0 && (
           <div className="flex justify-between text-white">
             <span>{t.labels.groupDiscount}</span>
             <span>
-              -{formatByLang(lang, totals.discountPerPerson, totals.discountPerPerson)} / {lang === "vi" ? "khách" : "pax"}
+              -{formatByLang(lang, totals.discountPerPerson, totals.discountPerPerson)} /{" "}
+              {lang === "vi" ? "khách" : "pax"}
             </span>
           </div>
         )}

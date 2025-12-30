@@ -24,11 +24,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // Bỏ 'suppressHydrationWarning' khỏi thẻ <html>
     <html lang="vi">
       <body 
         className={`font-sans ${GeistSans.variable} ${montserrat.variable}`}
-        suppressHydrationWarning // <-- THÊM VÀO ĐÂY
+        suppressHydrationWarning
       >
         <LanguageProvider>
           <Suspense fallback={null}>

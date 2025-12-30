@@ -306,12 +306,29 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* Image */}
-            <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-              <div className="relative aspect-[16/10] md:aspect-[16/9] rounded-[28px] overflow-hidden shadow-2xl ring-1 ring-white/30">
-                <Image src="/about-us-3.jpg" alt="Mebayluon Paragliding - About" fill className="object-cover" priority />
-              </div>
-            </motion.div>
+{/* Video (wider on large screens) */}
+<motion.div
+  initial={{ opacity: 0, x: 24 }}
+  whileInView={{ opacity: 1, x: 0 }}
+  viewport={{ once: true }}
+>
+  <div className="relative w-full lg:w-[110%] lg:ml-[-5%] aspect-[16/10] md:aspect-[16/9] rounded-[28px] overflow-hidden shadow-2xl ring-1 ring-white/30">
+    <video
+      className="absolute inset-0 h-full w-full object-cover"
+      src="/about-us-video1.mp4"
+      autoPlay
+      loop
+      playsInline
+      preload="metadata"
+      muted
+      aria-label="Mebayluon Paragliding - About"
+    />
+  </div>
+</motion.div>
+
+
+
+
           </div>
         </div>
       </section>

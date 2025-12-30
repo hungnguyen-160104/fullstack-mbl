@@ -1,11 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useBookingStore } from "@/store/booking-store";
-import { computePriceByLang, LOCATIONS } from "@/lib/booking/calculate-price";
+import { computePriceByLang, LOCATIONS, type AddonKey } from "@/lib/booking/calculate-price";
 import { useBookingText, useLangCode, BIGC_THANG_LONG_MAP } from "@/lib/booking/translations-booking";
 import { createBooking } from "@/lib/booking/api";
 import { notifyTelegram } from "@/lib/booking/chatbot-api";
+
+/** UI i18n (đã bỏ Download PDF) */
+const UI_I18N: Record<
+  string,
+  { reviewTitle: string; termsTitle: string; openInNewTab: string; close: string }
+> = {
+  vi: {
+    reviewTitle: "Vui lòng kiểm tra lại thông tin đặt bay",
+    termsTitle: "Điều khoản & điều kiện",
+    openInNewTab: "Mở trong tab mới",
+    close: "Đóng",
+  },
+  en: {
+    reviewTitle: "Please review your booking details",
+    termsTitle: "Terms & Conditions",
+    openInNewTab: "Open in new tab",
+    close: "Close",
+  },
+  fr: {
+    reviewTitle: "Veuillez vérifier les informations de votre réservation",
+    termsTitle: "Conditions générales",
+    openInNewTab: "Ouvrir dans un nouvel onglet",
+    close: "Fermer",
+  },
+  ru: {
+    reviewTitle: "Пожалуйста, проверьте данные бронирования",
+    termsTitle: "Правила и условия",
+    openInNewTab: "Открыть в новой вкладке",
+    close: "Закрыть",
+  },
+};
+
+const ADDON_KEYS: AddonKey[] = ["pickup", "flycam", "camera360"];
 
 export default function ReviewConfirmStep() {
   const t = useBookingText();
@@ -13,31 +46,58 @@ export default function ReviewConfirmStep() {
 
   const data = useBookingStore((s) => s.data);
   const update = useBookingStore((s) => s.update);
+  const setBookingResult = useBookingStore((s) => s.setBookingResult);
   const back = useBookingStore((s) => s.back);
   const next = useBookingStore((s) => s.next);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [showTerms, setShowTerms] = useState(false);
+
+  const ui = UI_I18N[lang] ?? UI_I18N.vi;
+
+  // Khóa cuộn nền khi mở modal
+  useEffect(() => {
+    if (!showTerms) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showTerms]);
 
   const cfg = LOCATIONS[data.location];
+
   const billInLang = computePriceByLang(
-    { location: data.location, guestsCount: data.guestsCount, dateISO: data.dateISO, addons: data.addons },
+    {
+      location: data.location,
+      guestsCount: data.guestsCount,
+      dateISO: data.dateISO,
+      addons: data.addons,        // backward compat
+      addonsQty: data.addonsQty,  // NEW
+    },
     lang
   );
+
+  const getAddonQty = (k: AddonKey) => {
+    const q = (data.addonsQty?.[k] ?? 0) || (data.addons?.[k] ? data.guestsCount : 0);
+    return Math.max(0, Math.min(data.guestsCount || 1, Number(q) || 0));
+  };
+
+  const pickupQty = getAddonQty("pickup");
+  const isHaNoi = data.location === "ha_noi";
 
   const handleConfirm = async () => {
     setSubmitting(true);
     setError(undefined);
 
     try {
-      // Lấy tên/điện thoại chính để thỏa validate backend
       const primaryName =
         (data as any)?.contact?.fullName?.trim?.() ||
         data?.guests?.[0]?.fullName?.trim?.() ||
-        ""; // fallback: khách 1
+        "";
       const primaryPhone = (data as any)?.contact?.phone?.trim?.() || "";
 
-      // Pre-validate nhẹ phía client để báo lỗi rõ ràng hơn
       const missing: string[] = [];
       if (!primaryName) missing.push("tên liên hệ");
       if (!primaryPhone) missing.push("số điện thoại");
@@ -49,23 +109,27 @@ export default function ReviewConfirmStep() {
 
       const payload = {
         ...data,
-        // các field backend validateBooking() yêu cầu ở cấp gốc:
         name: primaryName,
         phone: primaryPhone,
-        date: data.dateISO, // backend kiểm tra input.date (không phải dateISO)
-        // khóa + tên hiển thị
+        date: data.dateISO,
         location: data.location,
         locationName: cfg?.name?.[lang] ?? cfg?.name?.vi ?? data.location,
-        // “bảng giá” đã tính theo ngôn ngữ
+
+        // NEW: gửi breakdown để Telegram/backend hiển thị đúng qty
         price: {
           currency: billInLang.currency,
           perPerson: billInLang.totalPerPerson,
+          basePerPerson: billInLang.basePricePerPerson,
+          discountPerPerson: billInLang.discountPerPerson,
+          addonsQty: billInLang.addonsQty,
+          addonsUnitPrice: billInLang.addonsUnitPrice,
+          addonsTotal: billInLang.addonsTotal,
           total: billInLang.totalAfterDiscount,
         },
+
         createdAt: new Date().toISOString(),
       };
 
-      // 1) Tạo booking (server sẽ validate & chuẩn hóa)
       const createResp: any = await createBooking(payload);
       if (!createResp?.ok) {
         const serverMsg = createResp?.message || "Tạo booking thất bại";
@@ -73,14 +137,15 @@ export default function ReviewConfirmStep() {
         throw new Error(`${serverMsg}${serverErrs}`);
       }
 
-      // 2) Gửi thông báo Telegram (best-effort, không chặn bước tiếp theo nếu lỗi)
+      // NEW: lưu kết quả để step Success in vé PDF
+      setBookingResult(createResp.booking || payload);
+
       try {
         await notifyTelegram(createResp.booking || payload);
       } catch (tgErr: any) {
         console.warn("⚠️ Gửi Telegram thất bại (không chặn flow):", tgErr?.message || tgErr);
       }
 
-      // Thành công -> sang bước 5
       next();
     } catch (e: any) {
       console.error("❌ Lỗi khi xác nhận:", e);
@@ -92,17 +157,15 @@ export default function ReviewConfirmStep() {
 
   const glassWrapperClass =
     "bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-lg p-5 space-y-6";
-  const innerBlockClass =
-    "rounded-2xl border border-white/40 p-4 text-sm text-white/90";
+  const innerBlockClass = "rounded-2xl border border-white/40 p-4 text-sm text-white/90";
 
-  const isHaNoi = data.location === "ha_noi";
+  // Trang điều khoản (thay cho PDF)
+  const termsUrl = `/terms?lang=${lang}`;
 
   return (
     <div className="space-y-6 text-white">
       <div className={glassWrapperClass}>
-        <h3 className="text-lg font-semibold text-white">
-          Vui lòng kiểm tra lại thông tin đặt bay
-        </h3>
+        <h3 className="text-lg font-semibold text-white">{ui.reviewTitle}</h3>
 
         <div className={innerBlockClass}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,7 +199,9 @@ export default function ReviewConfirmStep() {
               <span className="font-medium">{t.labels.email}: </span>
               {data.contact?.email}
             </div>
-            {data?.addons?.pickup && isHaNoi && (
+
+            {/* pickup selected if qty>0 */}
+            {pickupQty > 0 && isHaNoi && (
               <div className="md:col-span-2">
                 <span className="font-medium">{t.labels.pickup}: </span>
                 {t.labels.pickupFixed}{" "}
@@ -145,12 +210,13 @@ export default function ReviewConfirmStep() {
                 </a>
               </div>
             )}
-            {data?.addons?.pickup && !isHaNoi && data.contact?.pickupLocation && (
+            {pickupQty > 0 && !isHaNoi && data.contact?.pickupLocation && (
               <div className="md:col-span-2">
                 <span className="font-medium">{t.labels.pickup}: </span>
                 {data.contact?.pickupLocation}
               </div>
             )}
+
             {data.contact?.specialRequest && (
               <div className="md:col-span-2">
                 <span className="font-medium">{t.labels.specialRequest}: </span>
@@ -169,29 +235,46 @@ export default function ReviewConfirmStep() {
                   <span className="font-medium">Khách {i + 1}:</span> {g.fullName}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <div>{t.labels.dob}: {g.dob}</div>
-                  <div>{t.labels.gender}: {g.gender}</div>
-                  {g.idNumber && <div>{t.labels.idNumber}: {g.idNumber}</div>}
-                  {g.weightKg && <div>{t.labels.weightKg}: {g.weightKg} kg</div>}
-                  {g.nationality && <div>{t.labels.nationality}: {g.nationality}</div>}
+                  <div>
+                    {t.labels.dob}: {g.dob}
+                  </div>
+                  <div>
+                    {t.labels.gender}: {g.gender}
+                  </div>
+                  {g.idNumber && (
+                    <div>
+                      {t.labels.idNumber}: {g.idNumber}
+                    </div>
+                  )}
+                  {g.weightKg && (
+                    <div>
+                      {t.labels.weightKg}: {g.weightKg} kg
+                    </div>
+                  )}
+                  {g.nationality && (
+                    <div>
+                      {t.labels.nationality}: {g.nationality}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Terms checkbox + mở modal */}
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
-            checked={data.acceptedTerms}
+            checked={!!data.acceptedTerms}
             onChange={(e) => update({ acceptedTerms: e.target.checked })}
             className="mt-1 h-4 w-4 accent-green-500"
           />
           <span className="text-sm text-white">
             {t.labels.termsText}{" "}
-            <a className="text-blue-400 underline" href="/terms" target="_blank" rel="noreferrer">
+            <button type="button" onClick={() => setShowTerms(true)} className="text-blue-400 underline">
               {t.labels.viewTerms}
-            </a>
+            </button>
           </span>
         </label>
       </div>
@@ -217,6 +300,31 @@ export default function ReviewConfirmStep() {
           {submitting ? t.buttons.processing : t.buttons.confirm}
         </button>
       </div>
+
+      {/* Modal: hiển thị trang /terms trong iframe */}
+      {showTerms && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowTerms(false)} />
+          <div className="relative mx-auto my-8 w-[min(96vw,1000px)] h-[min(90vh,800px)] bg-black rounded-2xl shadow-2xl ring-1 ring-white/20 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/10">
+              <span className="text-sm font-medium">{ui.termsTitle}</span>
+              <div className="flex items-center gap-3">
+                <a href={termsUrl} target="_blank" rel="noreferrer" className="underline text-sm">
+                  {ui.openInNewTab}
+                </a>
+                <button
+                  onClick={() => setShowTerms(false)}
+                  className="px-2 py-1 rounded-md border border-white/30 hover:bg-white/10"
+                >
+                  {ui.close}
+                </button>
+              </div>
+            </div>
+
+            <iframe key={lang} className="w-full h-[calc(100%-40px)]" src={termsUrl} title="Terms Page" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
