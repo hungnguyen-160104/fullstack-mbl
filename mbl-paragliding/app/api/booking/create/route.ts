@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import spots from "@/data/spots.json";
+import { connectDB } from "@/lib/mongodb";
+import { Customer } from "@/models/Customer.model";
+import { Booking } from "@/models/Booking.model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +15,7 @@ type AddonsQty = Partial<Record<AddonKey, number>>;
 type Contact = {
   phone?: string;
   email?: string;
+  fullName?: string;
   pickupLocation?: string;
   specialRequest?: string;
 };
@@ -84,7 +88,7 @@ function fmtMoney(n?: number, currency?: string) {
 
 async function sendTelegramToAll(text: string, html = true) {
   const token = process.env.TELEGRAM_BOT_TOKEN || "";
-  const ids = (process.env.TELEGRAM_CHAT_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const ids = (process.env.TELEGRAM_CHAT_IDS || process.env.TELEGRAM_CHAT_ID || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (!token || ids.length === 0) {
     return [{ ok: false, error: "Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_IDS" }];
   }
@@ -233,7 +237,85 @@ export async function POST(req: NextRequest) {
     });
 
     const c = normalized.contact || {};
+    const primaryGuestName =
+      (normalized.guests || []).find((g) => g.fullName && g.fullName.trim())?.fullName?.trim() ||
+      c.fullName?.trim();
 
+    // ============ Lưu Customer và Booking vào MongoDB ============
+    try {
+      // Kết nối DB
+      await connectDB();
+
+      // Validate phone (bắt buộc)
+      if (!c.phone || !c.phone.trim()) {
+        return NextResponse.json(
+          { ok: false, error: "VALIDATION_ERROR", message: "Số điện thoại là bắt buộc" },
+          { status: 400 }
+        );
+      }
+
+      // Normalize phone (trim + lowercase)
+      const normalizedPhone = c.phone.trim().toLowerCase();
+
+      // Upsert Customer
+      const customerUpdate: Record<string, any> = {
+        lastBookingAt: new Date(),
+      };
+      if (c.email) {
+        customerUpdate.email = c.email.trim().toLowerCase();
+      }
+      if (primaryGuestName) {
+        customerUpdate.fullName = primaryGuestName;
+      }
+
+      const customer = await Customer.findOneAndUpdate(
+        { phone: normalizedPhone },
+        {
+          $set: customerUpdate,
+          $setOnInsert: {
+            phone: normalizedPhone,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      if (!customer?._id) {
+        return NextResponse.json(
+          { ok: false, error: "CUSTOMER_SAVE_FAILED", message: "Không thể lưu thông tin khách hàng" },
+          { status: 500 }
+        );
+      }
+
+      // Tạo Booking mới
+      const booking = await Booking.create({
+        customerId: customer._id,
+        location: normalized.location,
+        locationName: normalized.locationName,
+        dateISO: normalized.dateISO,
+        timeSlot: normalized.timeSlot,
+        guestsCount: normalized.guestsCount,
+        contact: {
+          phone: normalizedPhone,
+          email: c.email ? c.email.trim().toLowerCase() : undefined,
+          fullName: primaryGuestName,
+          pickupLocation: c.pickupLocation,
+          specialRequest: c.specialRequest,
+        },
+        guests: normalized.guests || [],
+        addons: normalized.addons,
+        addonsQty: normalized.addonsQty,
+        price: normalized.price,
+        status: "pending",
+      });
+
+      if (!booking?._id) {
+        return NextResponse.json(
+          { ok: false, error: "BOOKING_SAVE_FAILED", message: "Không thể lưu đơn đặt bay" },
+          { status: 500 }
+        );
+      }
+
+      // Sau khi lưu DB thành công, gửi Telegram
     const basePerPerson = normalized.price?.basePerPerson;
     const discountPerPerson = normalized.price?.discountPerPerson;
     const total = normalized.price?.total;
@@ -265,25 +347,42 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join("\n");
 
-    // Gửi Telegram
+    // Gửi Telegram (không fail booking nếu Telegram lỗi, chỉ log warning)
     const results = await sendTelegramToAll(text, true);
     const failed = results.filter((r) => r.ok === false);
     if (failed.length) {
-      return NextResponse.json(
-        { ok: false, message: "Some Telegram messages failed", details: results },
-        { status: 502 }
-      );
+      console.warn("[BookingCreate] Telegram failed:", failed);
     }
 
     return NextResponse.json(
       {
         ok: true,
         message: "Đã gửi yêu cầu đặt bay. Chúng tôi sẽ liên hệ sớm!",
-        telegram: results.map((r) => ({ chat_id: (r as any).chat_id })),
-        booking: normalized,
+        bookingId: booking._id.toString(),
+        customerId: customer._id.toString(),
+        telegram: results.map((r) => ({ chat_id: (r as any).chat_id, ok: (r as any).ok })),
+        booking: {
+          _id: booking._id.toString(),
+          customerId: customer._id.toString(),
+          location: booking.location,
+          locationName: booking.locationName,
+          dateISO: booking.dateISO,
+          timeSlot: booking.timeSlot,
+          guestsCount: booking.guestsCount,
+          status: booking.status,
+          createdAt: booking.createdAt,
+        },
       },
       { status: 201 }
     );
+    } catch (dbErr: any) {
+      // Lỗi lưu DB - không crash, trả 500
+      console.error("[BookingCreate] DB Error:", dbErr?.message);
+      return NextResponse.json(
+        { ok: false, error: "DB_SAVE_FAILED", message: "Lỗi lưu dữ liệu. Vui lòng thử lại." },
+        { status: 500 }
+      );
+    }
   } catch (err: any) {
     return NextResponse.json(
       { ok: false, message: err?.message || "Internal Server Error" },

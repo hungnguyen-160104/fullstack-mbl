@@ -1,39 +1,32 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getBaseUrl } from "@/lib/base-url";
+import { getPosts } from "@/lib/posts-data";
 import { KnowledgeTabs } from "./KnowledgeTabs";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 async function getData(sub?: string) {
-  const base = getBaseUrl();
-
-  const qp = new URLSearchParams({
-    isPublished: "true",
+  // Gọi trực tiếp database thay vì fetch qua HTTP
+  const data = await getPosts({
     category: "knowledge",
+    isPublished: true,
+    subCategory: sub && sub !== "all" ? sub : undefined,
+    limit: 24,
     sort: "-publishedAt,-createdAt",
-    limit: "24",
   });
 
-  if (sub && sub !== "all") {
-    qp.set("subCategory", sub); // API đã hỗ trợ alias & key chuẩn
-  }
-
-  const url = `${base}/api/posts?${qp.toString()}`;
-  const res = await fetch(url, { next: { revalidate: 120 } });
-  if (!res.ok) return [];
-  const data = await res.json();
   return Array.isArray(data?.items) ? data.items : [];
 }
 
 export default async function KnowledgeAllPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const raw = Array.isArray(searchParams?.sub)
-    ? searchParams?.sub?.[0]
-    : (searchParams?.sub as string | undefined);
+  const params = await searchParams;
+  const raw = Array.isArray(params?.sub)
+    ? params?.sub?.[0]
+    : (params?.sub as string | undefined);
   const sub = raw?.toString().toLowerCase() || "all";
 
   const items = await getData(sub);

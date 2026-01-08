@@ -11,16 +11,29 @@ export default function ProductCard({ product }: { product: Post }) {
     ? `/store/${product.storeCategory}/${product.slug}`
     : `/store/${product.slug}`;
 
+  const imageUrl = product.coverImage || "/placeholder.jpg";
+  const isPixabay = imageUrl?.includes("pixabay.com");
+
   return (
     <Card className="overflow-hidden bg-white/20 backdrop-blur-md border-white/30 hover:shadow-2xl transition-all">
       {/* Ảnh cover */}
       <div className="relative h-56">
-        <Image
-          src={product.coverImage || "/placeholder.jpg"}
-          alt={product.title}
-          fill
-          className="object-cover"
-        />
+        {isPixabay ? (
+          // Sử dụng regular img tag cho Pixabay (không optimize)
+          <img
+            src={imageUrl}
+            alt={product.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          // Sử dụng Next.js Image cho Cloudinary & internal images
+          <Image
+            src={imageUrl}
+            alt={product.title}
+            fill
+            className="object-cover"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
       </div>
 

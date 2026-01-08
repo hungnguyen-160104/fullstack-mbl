@@ -1,26 +1,30 @@
 // /app/blog/page.tsx
 import Image from "next/image";
 import Link from "next/link";
-import { getServerBaseUrl } from "@/lib/server-base";
+import { getPosts } from "@/lib/posts-data";
 
 function stripHtml(html: string) {
   return (html || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
 export default async function BlogPage() {
-  const base = await getServerBaseUrl();
-
-  const fixedUrl = `${base}/api/posts?isPublished=true&category=news&fixed=true&limit=6&sort=-publishedAt,-createdAt`;
-  const latestUrl = `${base}/api/posts?isPublished=true&category=news&page=1&limit=12&sort=-publishedAt,-createdAt`;
-
-  const [fixedRes, latestRes] = await Promise.all([
-    fetch(fixedUrl, { next: { revalidate: 180 } }),
-    fetch(latestUrl, { next: { revalidate: 180 } }),
+  // Gọi trực tiếp database thay vì fetch qua HTTP
+  const [fixedData, latestData] = await Promise.all([
+    getPosts({
+      category: "news",
+      isPublished: true,
+      fixed: true,
+      limit: 6,
+      sort: "-publishedAt,-createdAt",
+    }),
+    getPosts({
+      category: "news",
+      isPublished: true,
+      page: 1,
+      limit: 12,
+      sort: "-publishedAt,-createdAt",
+    }),
   ]);
-  if (!fixedRes.ok || !latestRes.ok) throw new Error("Fetch news failed");
-
-  const fixedData = await fixedRes.json();
-  const latestData = await latestRes.json();
 
   const fixedItems = fixedData?.items ?? [];
   const latestItems = latestData?.items ?? [];

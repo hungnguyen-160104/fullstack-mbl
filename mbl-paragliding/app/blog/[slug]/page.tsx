@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import RelatedPosts from "@/components/posts/RelatedPosts";
+import { getPostBySlug } from "@/lib/posts-data";
 
 /** ===== Types ===== */
 type Post = {
@@ -20,25 +20,10 @@ type Post = {
   views?: number;
 };
 
-/** ===== Base URL helper (async – phù hợp môi trường của bạn) ===== */
-async function getBase(): Promise<string> {
-  const pub = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
-  if (pub) return pub.replace(/\/$/, "");
-  const h = await headers(); // ✅ PHẢI await
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  return host ? `${proto}://${host}` : "http://localhost:8080";
-}
-
 /** ===== Fetch post by slug ===== */
 async function fetchPostBySlug(slug: string): Promise<Post | null> {
-  const base = await getBase();
-  const r = await fetch(`${base}/api/posts/slug/${encodeURIComponent(slug)}`, {
-    cache: "no-store",
-  });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(await r.text().catch(() => r.statusText));
-  return r.json();
+  // Gọi trực tiếp database thay vì fetch qua HTTP
+  return await getPostBySlug(slug) as Post | null;
 }
 
 /** ===== SEO: generateMetadata ===== */

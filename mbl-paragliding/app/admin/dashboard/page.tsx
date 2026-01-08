@@ -5,7 +5,10 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { authHeader, getToken } from "@/lib/auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Paginated, Post } from "@/types/frontend/post";
+import { BookingsSection } from "@/components/admin/BookingsSection";
+import { CustomersSection } from "@/components/admin/CustomersSection";
 
 type ListResp = Paginated<Post>;
 const LIMIT = 10; // Đặt hằng số ra ngoài
@@ -120,24 +123,68 @@ export default function AdminDashboardPage() {
       <div className="relative z-10 w-full max-w-7xl space-y-6">
         <DashboardHeader onRefresh={loadPosts} />
 
-        {!data?.items?.length ? (
-          <EmptyState />
-        ) : (
-          <div className="space-y-5">
-            <PostTable
-              posts={data.items}
-              onDelete={handleDelete}
-              onTogglePublish={handleTogglePublish}
-              isLoading={loading}
-            />
-            <Pagination
-              currentPage={data.page}
-              totalPages={totalPages}
-              totalItems={data.total}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
+        {/* Tabs for Posts, Bookings, Customers */}
+        <div
+          className="rounded-2xl border border-white/20 shadow-xl 
+                     bg-white/15 backdrop-blur-xl p-1"
+        >
+          <Tabs defaultValue="posts" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-white/20 rounded-xl mb-6">
+              <TabsTrigger 
+                value="posts"
+                className="data-[state=active]:bg-white/40 data-[state=active]:shadow-md rounded-lg text-sm md:text-base"
+              >
+                📝 Bài Viết
+              </TabsTrigger>
+              <TabsTrigger 
+                value="bookings"
+                className="data-[state=active]:bg-white/40 data-[state=active]:shadow-md rounded-lg text-sm md:text-base"
+              >
+                📅 Đơn Đặt Bay
+              </TabsTrigger>
+              <TabsTrigger 
+                value="customers"
+                className="data-[state=active]:bg-white/40 data-[state=active]:shadow-md rounded-lg text-sm md:text-base"
+              >
+                👥 Khách Hàng
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="px-1 pb-1">
+              {/* Tab: Posts */}
+              <TabsContent value="posts" className="m-0">
+                {!data?.items?.length ? (
+                  <EmptyState />
+                ) : (
+                  <div className="space-y-5">
+                    <PostTable
+                      posts={data.items}
+                      onDelete={handleDelete}
+                      onTogglePublish={handleTogglePublish}
+                      isLoading={loading}
+                    />
+                    <Pagination
+                      currentPage={data.page}
+                      totalPages={totalPages}
+                      totalItems={data.total}
+                      onPageChange={setPage}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Tab: Bookings */}
+              <TabsContent value="bookings" className="m-0">
+                <BookingsSection />
+              </TabsContent>
+
+              {/* Tab: Customers */}
+              <TabsContent value="customers" className="m-0">
+                <CustomersSection />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
@@ -177,7 +224,7 @@ function DashboardHeader({ onRefresh }: { onRefresh: () => void }) {
                  bg-white/15 backdrop-blur-xl 
                  border border-white/20 shadow-lg text-white" // Đổi nền xanh -> nền kính trắng
     >
-      <h2 className="text-3xl font-bold drop-shadow-lg">Quản lý Bài viết</h2>
+      <h2 className="text-3xl font-bold drop-shadow-lg">Quản Lý Hệ Thống</h2>
       <div className="flex gap-4">
         <button
           className="px-5 py-2 rounded-xl bg-white/40 border border-white/50 text-gray-900 

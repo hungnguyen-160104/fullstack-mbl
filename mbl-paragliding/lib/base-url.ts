@@ -11,6 +11,8 @@ export function getBaseUrl() {
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "http";
 
-  // Fallback đúng cổng dev của bạn (8080)
-  return host ? `${proto}://${host}` : "http://localhost:8080";
+  // Dev fallback khớp với Next dev server (mặc định 3000, hoặc PORT nếu có)
+  if (host) return `${proto}://${host}`;
+  const port = process.env.PORT || "3000";
+  return `http://localhost:${port}`;
 }

@@ -37,7 +37,23 @@ async function fetchJson<T>(url: string, init?: RequestInit, internal = false): 
   const method = (init?.method || "GET").toUpperCase();
   const body = init?.body as any;
 
-  const headers = new Headers(init?.headers as HeadersInit | undefined);
+  // Đảm bảo giữ nguyên headers từ init (bao gồm Authorization)
+  const headers = new Headers();
+  
+  // Copy tất cả headers từ init (hỗ trợ cả object và Headers)
+  if (init?.headers) {
+    const inputHeaders = init.headers;
+    if (inputHeaders instanceof Headers) {
+      inputHeaders.forEach((value, key) => headers.set(key, value));
+    } else if (Array.isArray(inputHeaders)) {
+      inputHeaders.forEach(([key, value]) => headers.set(key, value));
+    } else {
+      Object.entries(inputHeaders).forEach(([key, value]) => {
+        if (value !== undefined) headers.set(key, value);
+      });
+    }
+  }
+  
   const hasCT = headers.has("Content-Type") || headers.has("content-type");
 
   if (internal && (method === "POST" || method === "PUT" || method === "PATCH")) {
@@ -61,16 +77,29 @@ async function fetchJson<T>(url: string, init?: RequestInit, internal = false): 
 
   if (!res.ok) {
     let msg = "";
-    try {
-      msg = await res.text();
-    } catch {}
-    if (!msg) {
+    let payload: any = null;
+
+    // Try JSON first
+    if (ct.includes("application/json")) {
       try {
-        const data = await res.json();
-        msg = (data as any)?.message || (data as any)?.error || "";
+        payload = await res.clone().json();
+        msg = payload?.message || payload?.error || "";
       } catch {}
     }
-    throw new Error(msg || `${res.status} ${res.statusText}`);
+
+    if (!msg) {
+      try {
+        msg = await res.clone().text();
+      } catch {}
+    }
+
+    const err = new Error(msg || `${res.status} ${res.statusText}`) as Error & {
+      status?: number;
+      data?: any;
+    };
+    err.status = res.status;
+    err.data = payload;
+    throw err;
   }
 
   if (res.status === 204) return {} as T;

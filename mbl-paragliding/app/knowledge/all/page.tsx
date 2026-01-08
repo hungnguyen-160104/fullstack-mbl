@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import KnowledgeTabs from '../KnowledgeTabs';
-import { headers } from 'next/headers';
+import { getPosts } from '@/lib/posts-data';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -9,28 +9,15 @@ export const dynamic = 'force-dynamic';
 const fmt = (s?: string) =>
   s ? new Date(s).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
-async function getApiBase(): Promise<string> {
-  // Ưu tiên base public (nếu có)
-  const pub = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim().replace(/\/$/, '');
-  if (pub) return pub;
-
-  // SSR: dựng absolute URL để tránh "Failed to parse URL from /api/..."
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
-  return host ? `${proto}://${host}` : 'http://localhost:8080';
-}
-
 async function fetchPosts() {
-  const base = await getApiBase();
-  const qs = new URLSearchParams({
+  // Gọi trực tiếp database thay vì fetch qua HTTP
+  const data = await getPosts({
     category: 'knowledge',
-    isPublished: 'true',                  // ✅ đúng tham số API
+    isPublished: true,
     sort: '-publishedAt,-createdAt',
+    limit: 100, // Lấy nhiều hơn để hiển thị tất cả
   });
-  const res = await fetch(`${base}/api/posts?${qs.toString()}`, { cache: 'no-store' });
-  if (!res.ok) return { items: [] as any[] };
-  return res.json() as Promise<{ items: any[] }>;
+  return { items: data.items || [] };
 }
 
 export default async function KnowledgeAllPage() {

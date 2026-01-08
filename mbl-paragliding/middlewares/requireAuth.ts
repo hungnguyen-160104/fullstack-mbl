@@ -1,6 +1,9 @@
 // middlewares/requireAuth.ts
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/utils/jwt";
+import { AUTH_TOKEN_KEY } from "@/lib/auth-constants";
+
+const AUTH_COOKIE_NAME = AUTH_TOKEN_KEY;
 
 export type AuthUser = {
   username: string;
@@ -14,20 +17,17 @@ export type AuthUser = {
  * - On failure: returns NextResponse 401 with WWW-Authenticate header
  */
 export function requireAuth(req: Request): AuthUser | NextResponse {
-  const header = req.headers.get("authorization") || "";
-  const m = header.match(/^Bearer\s+(.+)$/i);
+  const token = extractToken(req);
 
-  if (!m) {
+  if (!token) {
     return NextResponse.json(
-      { message: "Missing Bearer token" },
+      { message: "Missing authentication token" },
       {
         status: 401,
         headers: { "WWW-Authenticate": 'Bearer realm="api"' },
       }
     );
   }
-
-  const token = m[1];
 
   try {
     const payload = verifyToken(token);
@@ -37,7 +37,10 @@ export function requireAuth(req: Request): AuthUser | NextResponse {
       exp: (payload as any).exp,
     };
     return user;
-  } catch {
+  } catch (err) {
+    console.warn("[requireAuth] invalid token", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json(
       { message: "Invalid or expired token" },
       {
@@ -63,4 +66,26 @@ export function errorHandler(err: any) {
   const status = err?.status || 500;
   const message = err?.message || "Internal Server Error";
   return NextResponse.json({ message }, { status });
+}
+
+function extractToken(req: Request): string | null {
+  const header = req.headers.get("authorization") || "";
+  const m = header.match(/^Bearer\s+(.+)$/i);
+  if (m) {
+    return m[1].trim();
+  }
+
+  const cookieHeader = req.headers.get("cookie");
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(";");
+  for (const raw of cookies) {
+    const [name, ...rest] = raw.trim().split("=");
+    if (!name) continue;
+    if (name === AUTH_COOKIE_NAME) {
+      return decodeURIComponent(rest.join("="));
+    }
+  }
+
+  return null;
 }
