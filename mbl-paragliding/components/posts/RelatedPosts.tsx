@@ -20,16 +20,23 @@ type PostLite = {
 };
 
 async function getBase(): Promise<string> {
-  const pub = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
-  if (pub) return pub.replace(/\/$/, "");
   try {
-    const h = await (headers() as any);
+    const h = headers();
     const host = h.get("x-forwarded-host") ?? h.get("host");
-    const proto = h.get("x-forwarded-proto") ?? "http";
-    return host ? `${proto}://${host}` : "http://localhost:8080";
+    if (host) {
+      const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+      return `${proto}://${host}`.replace(/\/$/, "");
+    }
   } catch {
-    return "http://localhost:8080";
+    // ignore header access issues (e.g. during build)
   }
+
+  const internal =
+    (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
+  if (internal) return internal.replace(/\/$/, "");
+
+  const port = process.env.PORT || "8080";
+  return `http://localhost:${port}`;
 }
 
 async function fetchRelatedById(idOrSlug: string, limit = 4): Promise<PostLite[]> {
