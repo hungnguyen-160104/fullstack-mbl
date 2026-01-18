@@ -38,18 +38,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               MBL Admin
             </Link>
             <div className="hidden md:flex gap-6">
-              <Link 
-                href="/admin" 
-                className="text-sm font-medium text-slate-700 hover:text-emerald-600 transition"
-              >
-                Quản Lý
-              </Link>
-              <Link 
-                href="/admin/dashboard" 
-                className="text-sm font-medium text-slate-700 hover:text-emerald-600 transition"
-              >
-                Bài Viết
-              </Link>
+              <NavLink href="/admin" currentPath={pathname}>Quản Lý</NavLink>
+              <NavLink href="/admin/dashboard" currentPath={pathname}>Bài Viết</NavLink>
+              <NavLink href="/admin/statistics" currentPath={pathname}>Thống kê</NavLink>
             </div>
           </div>
         </nav>
@@ -58,5 +49,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Content */}
       <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
     </div>
+  );
+}
+
+function NavLink({ href, children, currentPath }: { href: string; children: React.ReactNode; currentPath: string | null }) {
+  const isActive = currentPath === href || (href !== "/admin" && currentPath?.startsWith(href));
+  return (
+    <Link
+      href={href}
+      className={`text-sm font-medium transition ${isActive ? "text-emerald-600" : "text-slate-700 hover:text-emerald-600"}`}
+    >
+      {children}
+    </Link>
   );
 }

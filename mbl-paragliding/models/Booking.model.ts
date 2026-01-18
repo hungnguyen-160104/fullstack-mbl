@@ -47,7 +47,7 @@ export interface IBooking {
   };
 
   // Status
-  status?: "pending" | "confirmed" | "cancelled"; // default "pending"
+  status?: "pending" | "confirmed" | "completed" | "cancelled"; // default "pending"
 
   // Metadata
   createdAt?: Date;
@@ -131,7 +131,7 @@ const BookingSchema = new Schema<IBooking>(
 
     status: {
       type: String,
-      enum: ["pending", "confirmed", "cancelled"],
+      enum: ["pending", "confirmed", "completed", "cancelled"],
       default: "pending",
       index: true,
     },

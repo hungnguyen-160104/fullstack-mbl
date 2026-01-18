@@ -16,7 +16,7 @@ export default function BookingPage() {
   const t = useBookingText();
 
   const backgroundStyle = {
-    backgroundImage: "url('/hinh-nen.jpg')",
+    backgroundImage: "url('/dat_bay.jpeg')",
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundAttachment: "fixed",

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     const filter: any = {};
 
     // Add status filter if provided
-    if (status && ["pending", "confirmed", "cancelled"].includes(status)) {
+    if (status && ["pending", "confirmed", "completed", "cancelled"].includes(status)) {
       filter.status = status;
     }
 

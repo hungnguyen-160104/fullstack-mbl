@@ -23,6 +23,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
+
 interface BookingItem {
   _id: string;
   customerId: string;
@@ -31,7 +33,7 @@ interface BookingItem {
   dateISO?: string;
   timeSlot?: string;
   guestsCount?: number;
-  status: string;
+  status: BookingStatus;
   createdAt: string;
   contact?: {
     phone?: string;
@@ -46,6 +48,24 @@ interface BookingListResponse {
   limit: number;
   total: number;
   pages: number;
+}
+
+const STATUS_META: Record<BookingStatus, { label: string; className: string }> = {
+  pending: { label: "Chờ xử lý", className: "bg-amber-100 text-amber-800 border-amber-200" },
+  confirmed: { label: "Đã xác nhận", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  completed: { label: "Đã hoàn thành", className: "bg-blue-100 text-blue-800 border-blue-200" },
+  cancelled: { label: "Đã hủy", className: "bg-rose-100 text-rose-800 border-rose-200" },
+};
+
+function StatusBadge({ status }: { status: BookingStatus }) {
+  const meta = STATUS_META[status];
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${meta.className}`}
+    >
+      {meta.label}
+    </span>
+  );
 }
 
 const LIMIT = 15;
@@ -68,7 +88,6 @@ export function BookingsSection() {
       const headers = authHeader();
       if (!headers.Authorization) {
         setError("Vui lòng đăng nhập lại để xem danh sách đặt bay");
-        setLoading(false);
         return;
       }
       const params = new URLSearchParams();
@@ -111,7 +130,7 @@ export function BookingsSection() {
   };
 
   const updateStatus = useCallback(
-    async (bookingId: string, nextStatus: "pending" | "confirmed" | "cancelled") => {
+    async (bookingId: string, nextStatus: BookingStatus) => {
       setUpdatingId(bookingId);
       try {
         const headers = authHeader();
@@ -194,7 +213,8 @@ export function BookingsSection() {
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="pending">Chờ xử lý</SelectItem>
-                <SelectItem value="confirmed">Xác nhận</SelectItem>
+                <SelectItem value="confirmed">Đã xác nhận</SelectItem>
+                <SelectItem value="completed">Đã hoàn thành</SelectItem>
                 <SelectItem value="cancelled">Hủy</SelectItem>
               </SelectContent>
             </Select>
@@ -245,25 +265,11 @@ export function BookingsSection() {
                     </TableCell>
                     <TableCell className="text-sm text-center">{booking.guestsCount || 1}</TableCell>
                     <TableCell className="text-sm">
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          booking.status === "pending"
-                            ? "bg-yellow-100/80 text-yellow-800"
-                            : booking.status === "confirmed"
-                              ? "bg-green-100/80 text-green-800"
-                              : "bg-red-100/80 text-red-800"
-                        }`}
-                      >
-                        {booking.status === "pending"
-                          ? "Chờ xử lý"
-                          : booking.status === "confirmed"
-                            ? "Đã xác nhận"
-                            : "Đã hủy"}
-                      </span>
+                      <StatusBadge status={booking.status} />
                     </TableCell>
                     <TableCell className="text-sm text-right">
                       <div className="flex flex-wrap justify-end gap-2">
-                        {booking.status !== "confirmed" && (
+                        {booking.status !== "confirmed" && booking.status !== "completed" && (
                           <Button
                             size="sm"
                             className="bg-emerald-500 hover:bg-emerald-600"
@@ -271,6 +277,16 @@ export function BookingsSection() {
                             onClick={() => updateStatus(booking._id, "confirmed")}
                           >
                             Xác nhận
+                          </Button>
+                        )}
+                        {booking.status === "confirmed" && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-500 hover:bg-blue-600"
+                            disabled={updatingId === booking._id}
+                            onClick={() => updateStatus(booking._id, "completed")}
+                          >
+                            Hoàn thành
                           </Button>
                         )}
                         {booking.status !== "cancelled" && (

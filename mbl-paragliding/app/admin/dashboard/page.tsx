@@ -3,12 +3,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { endOfDay, startOfMonth } from "date-fns";
 import api from "@/lib/api";
 import { authHeader, getToken } from "@/lib/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Paginated, Post } from "@/types/frontend/post";
 import { BookingsSection } from "@/components/admin/BookingsSection";
 import { CustomersSection } from "@/components/admin/CustomersSection";
+import {
+  StatisticsDashboard,
+  fetchStatisticsBundle,
+  type FilterState,
+} from "@/components/admin/statistics/StatisticsDashboard";
+import type { Paginated, Post } from "@/types/frontend/post";
+import type { StatisticsBundle } from "@/types/frontend/statistics";
 
 type ListResp = Paginated<Post>;
 const LIMIT = 10; // Đặt hằng số ra ngoài
@@ -29,6 +36,11 @@ export default function AdminDashboardPage() {
   // State quản lý phân trang
   const pageFromUrl = Number(searchParams.get("page") || "1");
   const [page, setPage] = useState<number>(pageFromUrl);
+  const [activeTab, setActiveTab] = useState("posts");
+
+  const [statsSeed, setStatsSeed] = useState<{ range: FilterState; data: StatisticsBundle } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   // 1. Đồng bộ state 'page' lên URL khi nó thay đổi
   useEffect(() => {
@@ -67,6 +79,32 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
+
+  const ensureStatsLoaded = useCallback(
+    async (force = false) => {
+      if (statsLoading) return;
+      if (statsSeed && !force) return;
+      setStatsLoading(true);
+      setStatsError(null);
+      const range = createDefaultStatsRange();
+      try {
+        const data = await fetchStatisticsBundle(range);
+        setStatsSeed({ range, data });
+      } catch (error) {
+        console.error(error);
+        setStatsError("Không thể tải dữ liệu thống kê. Vui lòng thử lại.");
+      } finally {
+        setStatsLoading(false);
+      }
+    },
+    [statsSeed, statsLoading],
+  );
+
+  useEffect(() => {
+    if (activeTab === "statistics") {
+      ensureStatsLoaded();
+    }
+  }, [activeTab, ensureStatsLoaded]);
 
   // 4. Các hành động (xoá, publish)
   const handleDelete = useCallback(
@@ -121,15 +159,22 @@ export default function AdminDashboardPage() {
 
       {/* Container chính của dashboard */}
       <div className="relative z-10 w-full max-w-7xl space-y-6">
-        <DashboardHeader onRefresh={loadPosts} />
+        <DashboardHeader
+          onRefresh={() => {
+            loadPosts();
+            if (activeTab === "statistics") {
+              ensureStatsLoaded(true);
+            }
+          }}
+        />
 
         {/* Tabs for Posts, Bookings, Customers */}
         <div
           className="rounded-2xl border border-white/20 shadow-xl 
                      bg-white/15 backdrop-blur-xl p-1"
         >
-          <Tabs defaultValue="posts" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-white/20 rounded-xl mb-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 bg-white/20 rounded-xl mb-6">
               <TabsTrigger 
                 value="posts"
                 className="data-[state=active]:bg-white/40 data-[state=active]:shadow-md rounded-lg text-sm md:text-base"
@@ -147,6 +192,12 @@ export default function AdminDashboardPage() {
                 className="data-[state=active]:bg-white/40 data-[state=active]:shadow-md rounded-lg text-sm md:text-base"
               >
                 👥 Khách Hàng
+              </TabsTrigger>
+              <TabsTrigger 
+                value="statistics"
+                className="data-[state=active]:bg-white/40 data-[state=active]:shadow-md rounded-lg text-sm md:text-base"
+              >
+                📊 Thống kê
               </TabsTrigger>
             </TabsList>
 
@@ -181,6 +232,34 @@ export default function AdminDashboardPage() {
               {/* Tab: Customers */}
               <TabsContent value="customers" className="m-0">
                 <CustomersSection />
+              </TabsContent>
+
+              {/* Tab: Statistics */}
+              <TabsContent value="statistics" className="m-0">
+                {statsSeed ? (
+                  <StatisticsDashboard initialRange={statsSeed.range} initialData={statsSeed.data} />
+                ) : (
+                  <div className="rounded-2xl border border-white/20 bg-white/10 px-6 py-12 text-center text-gray-100">
+                    {statsLoading ? (
+                      <>
+                        <p className="text-lg font-semibold">Đang tải thống kê...</p>
+                        <p className="text-sm opacity-80 mt-2">Vui lòng đợi trong giây lát.</p>
+                      </>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-lg font-semibold">
+                          {statsError || "Nhấn nút bên dưới để tải dữ liệu thống kê."}
+                        </p>
+                        <button
+                          onClick={() => ensureStatsLoaded(true)}
+                          className="px-5 py-2 rounded-xl bg-white/40 border border-white/50 text-gray-900 hover:bg-white/60 transition-colors duration-300 shadow-md font-medium"
+                        >
+                          {statsError ? "Thử lại" : "Tải thống kê"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
             </div>
           </Tabs>
@@ -304,8 +383,8 @@ function PostTable({
               <th className="p-4 text-left font-semibold drop-shadow-sm">
                 Trạng thái
               </th>
-              <th className="p-4 text-center font-semibold drop-shadow-sm">
-                Views
+              <th className="p-4 text-left font-semibold drop-shadow-sm min-w-[160px]">
+                Thống kê
               </th>
               <th className="p-4 text-left font-semibold drop-shadow-sm min-w-[100px]">
                 Cập nhật
@@ -379,9 +458,21 @@ function PostTableRow({
           {status.text}
         </span>
       </td>
-      {/* Views */}
-      <td className="p-4 text-center text-gray-800 align-top">
-        {post.views}
+      {/* Thống kê nhanh */}
+      <td className="p-4 text-sm text-gray-800 align-top">
+        <div className="flex flex-wrap gap-2">
+          <StatBadge label="Lượt xem" value={post.views.toLocaleString("vi-VN")} className="bg-sky-100 text-sky-800 border-sky-200" />
+          <StatBadge
+            label="Tags"
+            value={post.tags?.length ? post.tags.length : 0}
+            className="bg-violet-100 text-violet-800 border-violet-200"
+          />
+          <StatBadge
+            label="Ngôn ngữ"
+            value={(post.language || "vi").toUpperCase()}
+            className="bg-slate-100 text-slate-800 border-slate-200"
+          />
+        </div>
       </td>
       {/* Cập nhật */}
       <td className="p-4 text-xs text-gray-600 align-top">
@@ -476,6 +567,15 @@ function Pagination({
 // Các hàm này đã khớp với phong cách trong ảnh (badge màu, chữ trắng)
 // nên không cần thay đổi.
 
+function createDefaultStatsRange(): FilterState {
+  const now = new Date();
+  return {
+    from: startOfMonth(now).toISOString(),
+    to: endOfDay(now).toISOString(),
+    groupBy: "day",
+  };
+}
+
 function getCategoryDisplay(category: string | undefined) {
   switch (category) {
     case "news":
@@ -507,4 +607,23 @@ function getStatusDisplay(isPublished: boolean) {
     text: "Bản nháp", // Giống "Bản nháp" trong ảnh
     className: "bg-yellow-500/70 text-white shadow-sm",
   };
+}
+
+function StatBadge({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string | number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold ${className}`}
+    >
+      <span className="uppercase tracking-wide text-[10px] opacity-70">{label}</span>
+      <span>{value}</span>
+    </span>
+  );
 }

@@ -1,10 +1,12 @@
 // app/api/uploads/debug/route.ts
 import { NextResponse } from "next/server";
-import { cloudinary } from "@/lib/cloudinary";
+import { cloudinary, initCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  // Khởi tạo Cloudinary config
+  initCloudinary();
   const cfg = cloudinary.config() as any;
   const key: string = cfg?.api_key ? String(cfg.api_key) : "";
   return NextResponse.json({

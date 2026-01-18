@@ -104,7 +104,7 @@ export async function PATCH(
     const { status } = body;
 
     // Validate status if provided
-    if (status && !["pending", "confirmed", "cancelled"].includes(status)) {
+    if (status && !["pending", "confirmed", "completed", "cancelled"].includes(status)) {
       return NextResponse.json(
         { ok: false, error: "INVALID_STATUS", message: "Invalid status value" },
         { status: 400 }
