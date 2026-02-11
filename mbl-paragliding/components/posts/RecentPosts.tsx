@@ -50,7 +50,7 @@ export default function RecentPosts() {
       <div className="container mx-auto max-w-6xl px-4">
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((p) => {
-            const cover = p.thumbnail || "/images/post-fallback.jpg";
+            const cover = p.thumbnail || "/images/mebayluon.jpg";
             return (
               <li key={p.id}>
                 <Link href={`/blog/${p.slug}`} className="group" prefetch={false}>

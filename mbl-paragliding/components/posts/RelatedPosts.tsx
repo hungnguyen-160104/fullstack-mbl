@@ -129,7 +129,7 @@ export default async function RelatedPosts({
           {posts.map((p, idx) => {
             const key = p.id || p._id || `${p.slug}-${idx}`;
             const date = p.publishedAt || p.createdAt;
-            const img = p.thumbnail || p.coverImage || "/images/post-fallback.jpg";
+            const img = p.thumbnail || p.coverImage || "/images/mebayluon.jpg";
             const alt = p.title || "Bài viết";
             const priceText = formatPrice(p.price);
 

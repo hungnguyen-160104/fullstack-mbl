@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import RecentPosts from "@/components/posts/RecentPosts";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import  Footer  from "@/components/footer/Footer";
@@ -20,6 +19,9 @@ import {
   AlertTriangle,
   Shirt,
   PackageCheck,
+  Ban,
+  Calendar,
+  Ticket
 } from "lucide-react";
 
 
@@ -44,7 +46,7 @@ const RecentPosts = dynamic(() => import("@/components/posts/RecentPosts"), {
   ),
 });
 
-/** ====== DATA ====== */
+/** ====== DATA (SAFE UPDATE - không đổi key cũ để tránh lỗi) ====== */
 const flyingSpots = [
   {
     nameKey: "khauPha",
@@ -52,6 +54,11 @@ const flyingSpots = [
     locationKey: "yenBai",
     price: 2190000,
     image: "/mu-cang-chai-yen-bai-1.jpg",
+
+    // UI đổi tên: Khau Pha -> Mù Cang Chải
+    uiNameKey: "muCangChai",
+    // location Yên Bái đã đúng sẵn, nên có thể bỏ dòng dưới nếu không cần
+    uiLocationKey: "yenBai",
   },
   {
     nameKey: "sonTra",
@@ -59,6 +66,9 @@ const flyingSpots = [
     locationKey: "daNang",
     price: 1790000,
     image: "/son-tra-da-nang.jpg",
+
+    // UI đổi tên: Sơn Trà -> Đà Nẵng
+    uiNameKey: "daNang",
   },
   {
     nameKey: "doiBu",
@@ -66,6 +76,7 @@ const flyingSpots = [
     locationKey: "haNoi",
     price: 1690000,
     image: "/doi-bu-chuong-my.jpg",
+    // giữ nguyên (nếu cần đổi label thì thêm uiNameKey/uiLocationKey tương tự)
   },
   {
     nameKey: "muongHoaSapa",
@@ -73,6 +84,9 @@ const flyingSpots = [
     locationKey: "saPa",
     price: 2190000,
     image: "/muong-hoa-sapa.jpg",
+
+    // UI đổi tên: Mường Hoa... -> Sapa
+    uiNameKey: "sapa",
   },
   {
     nameKey: "vienNam",
@@ -80,6 +94,9 @@ const flyingSpots = [
     locationKey: "hoaBinh",
     price: 1690000,
     image: "/vien-nam-hoa-binh.jpg",
+
+    // UI đổi location: Hoà Bình -> Hà Nội (nhưng vẫn giữ locationKey cũ để không vỡ logic)
+    uiLocationKey: "haNoi",
   },
   {
     nameKey: "tramTau",
@@ -87,8 +104,16 @@ const flyingSpots = [
     locationKey: "yenBaiTramTau",
     price: 2000000,
     image: "/tram-tau-yen-bai.jpg",
+
+    // UI đổi location theo yêu cầu: -> Lào Cai (giữ locationKey cũ)
+    uiLocationKey: "laoCai",
   },
 ];
+
+/** ====== Khi render UI ====== */
+// const title = t(spot.uiNameKey ?? spot.nameKey);
+// const location = t(spot.uiLocationKey ?? spot.locationKey);
+
 
 export default function HomePage() {
   const { t } = useLanguage();
@@ -137,62 +162,42 @@ export default function HomePage() {
     },
   ];
 
-  // ====== PRE-NOTICE content (with fallbacks) ======
+  // ====== PRE-NOTICE content (from translations.ts) ======
   const preNotice = {
-    preparation: {
-      title: t?.preNotice?.preparation?.title ?? "Chuẩn bị trước khi bay",
-      clothing: {
-        title: t?.preNotice?.preparation?.clothing?.title ?? "Trang phục",
-        items:
-          t?.preNotice?.preparation?.clothing?.items ?? [
-            "Quần áo gọn gàng, thoải mái",
-            "Giày thể thao, mũi kín",
-            "Kính râm (nếu cần)",
-          ],
-      },
-      items: {
-        title: t?.preNotice?.preparation?.items?.title ?? "Vật dụng nên mang",
-        list:
-          t?.preNotice?.preparation?.items?.list ?? [
-            "Điện thoại/Máy ảnh",
-            "Kem chống nắng",
-            "Tâm lý thoải mái, sẵn sàng trải nghiệm!",
-          ],
-      },
-    },
     posters: {
       title: t?.preNotice?.posters?.title ?? "ĐIỀU KIỆN QUY ĐỊNH ĐỐI VỚI HÀNH KHÁCH",
-      subtitle: "",
+      subtitle: t?.preNotice?.posters?.subtitle ?? "",
     },
-    requirements: {
-      title: t?.preNotice?.requirements?.title ?? "Yêu cầu & Quy định",
-      eligible: {
-        title: t?.preNotice?.requirements?.eligible?.title ?? "Điều kiện tham gia",
-        items:
-          t?.preNotice?.requirements?.eligible?.items ?? [
-            "Sức khỏe tốt, không sợ độ cao",
-            "Cân nặng từ 25kg - 100kg",
-            "Tuân thủ hướng dẫn của phi công",
-          ],
+    preparation: {
+      title: t?.preNotice?.preparation?.title ?? "CHUẨN BỊ TRƯỚC KHI BAY",
+      clothing: {
+        title: t?.preNotice?.preparation?.clothing?.title ?? "Trang phục",
+        items: t?.preNotice?.preparation?.clothing?.items ?? [],
       },
+      items: {
+        title: t?.preNotice?.preparation?.items?.title ?? "Quy trình bay",
+        list: t?.preNotice?.preparation?.items?.list ?? [],
+      },
+    },
+    
+    requirements: {
+      title: t?.preNotice?.requirements?.title ?? "ĐIỀU KIỆN QUY ĐỊNH ĐỐI VỚI HÀNH KHÁCH",
+      eligible: {
+        title: t?.preNotice?.requirements?.eligible?.title ?? "Điều kiện tham gia bay",
+        items: t?.preNotice?.requirements?.eligible?.items ?? [],
+      },
+
       notEligible: {
-        title:
-          t?.preNotice?.requirements?.notEligible?.title ?? "Không phù hợp nếu bạn",
-        items:
-          t?.preNotice?.requirements?.notEligible?.items ?? [
-            "Có bệnh về tim mạch, huyết áp",
-            "Có vấn đề về xương khớp",
-            "Đang mang thai",
-          ],
+        title: t?.preNotice?.requirements?.notEligible?.title ?? "Đặt vé",
+        items: t?.preNotice?.requirements?.notEligible?.items ?? [],
       },
       special: {
-        title: t?.preNotice?.requirements?.special?.title ?? "Lưu ý đặc biệt",
-        items:
-          t?.preNotice?.requirements?.special?.items ?? [
-            "Không sử dụng chất kích thích trước khi bay",
-            "Ăn nhẹ trước chuyến bay khoảng 1-2 tiếng",
-            "Thông báo cho phi công nếu cảm thấy không khỏe",
-          ],
+        title: t?.preNotice?.requirements?.cancellation?.title ?? "Huỷ bay",
+        items: [
+          ...(t?.preNotice?.requirements?.cancellation?.byCompany?.items ?? []),
+          ...(t?.preNotice?.requirements?.cancellation?.byCustomer?.items ?? []),
+          ...(t?.preNotice?.requirements?.cancellation?.reschedule?.items ?? []),
+        ],
       },
     },
   };
@@ -486,7 +491,7 @@ export default function HomePage() {
           {/* requirements */}
           <div className="mt-16 max-w-5xl mx-auto space-y-8">
             <div className="grid md:grid-cols-2 gap-8">
-              {/* eligible */}
+              {/* eligible - Dieu kien tham gia */}
               <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                 <Card className="h-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg">
                   <CardHeader>
@@ -507,19 +512,42 @@ export default function HomePage() {
                 </Card>
               </motion.div>
 
-              {/* not eligible */}
-              <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
+
+
+              {/* not eligible - Dat ve */}
+              <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
                 <Card className="h-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-2xl">
-                      <XCircle className="text-red-400" /> {preNotice.requirements.notEligible.title}
+                      <Ticket className="text-yellow-400" /> {preNotice.requirements.notEligible.title}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-3">
                       {preNotice.requirements.notEligible.items.map((item: string, i: number) => (
                         <li key={i} className="flex items-start gap-3">
-                          <XCircle className="text-red-400 mt-1 flex-shrink-0" size={18} />
+                          <CheckCircle2 className="text-yellow-400 mt-1 flex-shrink-0" size={18} />
+                          <span className="text-slate-200">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* special - Huy bay */}
+              <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
+                <Card className="h-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-2xl">
+                      <Ban className="text-red-400" /> {preNotice.requirements.special.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {preNotice.requirements.special.items.map((item: string, i: number) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <Ban className="text-red-400 mt-1 flex-shrink-0" size={18} />
                           <span className="text-slate-200">{item}</span>
                         </li>
                       ))}
@@ -528,27 +556,6 @@ export default function HomePage() {
                 </Card>
               </motion.div>
             </div>
-
-            {/* special */}
-            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
-              <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <AlertTriangle className="text-yellow-400" /> {preNotice.requirements.special.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {preNotice.requirements.special.items.map((item: string, i: number) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <AlertTriangle className="text-yellow-400 mt-1 flex-shrink-0" size={18} />
-                        <span className="text-slate-200">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
         </div>
       </section>

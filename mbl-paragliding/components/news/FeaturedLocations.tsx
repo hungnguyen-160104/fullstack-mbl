@@ -48,7 +48,7 @@ export default async function FeaturedLocations() {
             >
               <div className="relative h-48">
                 <Image
-                  src={p.thumbnail || p.coverImage || "/images/post-fallback.jpg"}
+                  src={p.thumbnail || p.coverImage || "/images/mebayluon.jpg"}
                   alt={p.title}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"

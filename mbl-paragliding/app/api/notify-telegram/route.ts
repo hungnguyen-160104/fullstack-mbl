@@ -1,6 +1,6 @@
-// app/api/booking/create/route.ts
+// app/api/notify-telegram/route.ts
 import { NextResponse } from "next/server";
-import { createBooking } from "@/services/booking.service";
+import { postNotifyTelegram } from "@/services/telegram.service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,16 +12,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: "Invalid JSON" }, { status: 400 });
     }
 
-    const result = await createBooking(body); // validate + gửi Telegram
+    const { payload } = body;
+    if (!payload) {
+      return NextResponse.json({ ok: false, message: "Missing payload" }, { status: 400 });
+    }
+
+    const result = await postNotifyTelegram(payload);
     return NextResponse.json(
-      { ok: true, message: "Đã gửi yêu cầu đặt bay. Chúng tôi sẽ liên hệ sớm!", result },
-      { status: 201 }
+      { ok: result.ok, telegram: result.results },
+      { status: result.ok ? 200 : 500 }
     );
   } catch (err: any) {
-    if (err?.status === 400) {
-      return NextResponse.json({ ok: false, message: "Invalid booking", errors: err?.details ?? {} }, { status: 400 });
-    }
-    console.error("POST /api/booking/create error:", err);
+    console.error("POST /api/notify-telegram error:", err);
     return NextResponse.json({ ok: false, message: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -135,6 +135,39 @@ function normalizeAddonsQty(raw: Payload, guestsCount: number): AddonsQty {
   return out;
 }
 
+/** ============ Cloudflare Turnstile verification ============ */
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+async function verifyTurnstile(
+  token: string,
+  remoteip?: string
+): Promise<{ success: boolean; "error-codes"?: string[] }> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    console.warn("[Turnstile] TURNSTILE_SECRET_KEY not set – skipping verification");
+    return { success: true }; // Cho qua nếu chưa cấu hình (dev mode)
+  }
+
+  const formData = new URLSearchParams();
+  formData.set("secret", secret);
+  formData.set("response", token);
+  if (remoteip) formData.set("remoteip", remoteip);
+
+  const res = await fetch(TURNSTILE_VERIFY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formData.toString(),
+  });
+
+  const result = await res.json();
+
+  if (!result.success) {
+    console.warn("[Turnstile] Verify failed:", JSON.stringify(result));
+  }
+
+  return result;
+}
+
 /** ============ POST /api/booking/create ============ */
 export async function POST(req: NextRequest) {
   try {
@@ -144,6 +177,38 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ ok: false, message: "Invalid JSON" }, { status: 400 });
     }
+
+    // ─── Turnstile verification (anti-bot) ───
+    const turnstileToken = body?.turnstileToken;
+    console.log("[BookingCreate] Turnstile token received:", turnstileToken ? `${turnstileToken.substring(0, 20)}... (len=${turnstileToken.length})` : "MISSING");
+
+    if (!turnstileToken || typeof turnstileToken !== "string") {
+      return NextResponse.json(
+        { ok: false, error: "TURNSTILE_FAILED", message: "Thiếu xác thực Turnstile. Vui lòng thử lại." },
+        { status: 403 }
+      );
+    }
+
+    const remoteip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      undefined;
+
+    const turnstileResult = await verifyTurnstile(turnstileToken, remoteip);
+    if (!turnstileResult.success) {
+      console.warn("[BookingCreate] Turnstile verify failed:", turnstileResult["error-codes"]);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "TURNSTILE_FAILED",
+          message: "Xác thực Turnstile thất bại. Vui lòng thử lại.",
+          errorCodes: turnstileResult["error-codes"],
+        },
+        { status: 403 }
+      );
+    }
+    // ─── End Turnstile ───
+
     const raw = pickPayload(body);
     const keys = acceptedKeys();
 

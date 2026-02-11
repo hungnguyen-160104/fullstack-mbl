@@ -51,7 +51,7 @@ export default async function KnowledgeAllPage({
         ) : (
           <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((p: any) => {
-              const cover = p.thumbnail || p.coverImage || "/images/post-fallback.jpg";
+              const cover = p.thumbnail || p.coverImage || "/images/mebayluon.jpg";
               const date = p.publishedAt || p.createdAt;
               return (
                 <li key={p._id || p.slug} className="group">

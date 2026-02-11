@@ -57,7 +57,7 @@ export default async function BlogPage() {
             </h2>
             <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {fixedItems.map((p: any) => {
-                const cover = p.thumbnail || p.coverImage || "/images/post-fallback.jpg";
+                const cover = p.thumbnail || p.coverImage || "/images/mebayluon.jpg";
                 const date = p.publishedAt || p.createdAt;
                 return (
                   <li key={p._id || p.slug}>
@@ -99,7 +99,7 @@ export default async function BlogPage() {
           {latestItems.length ? (
             <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {latestItems.map((p: any) => {
-                const cover = p.coverImage || p.thumbnail || "/images/post-fallback.jpg";
+                const cover = p.coverImage || p.thumbnail || "/images/mebayluon.jpg";
                 const date = p.publishedAt || p.createdAt;
                 return (
                   <li key={p._id || p.slug}>

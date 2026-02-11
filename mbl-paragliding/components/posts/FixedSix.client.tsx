@@ -48,7 +48,7 @@ export default function FixedSixClient() {
   return (
     <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {posts.map((p) => {
-        const img = p.thumbnail || p.coverImage || "/images/post-fallback.jpg";
+        const img = p.thumbnail || p.coverImage || "/images/mebayluon.jpg";
         const date = p.publishedAt || p.createdAt;
         return (
           <Link

@@ -6,6 +6,8 @@ import { computePriceByLang, LOCATIONS, type AddonKey } from "@/lib/booking/calc
 import { useBookingText, useLangCode, BIGC_THANG_LONG_MAP } from "@/lib/booking/translations-booking";
 import { createBooking } from "@/lib/booking/api";
 import { notifyTelegram } from "@/lib/booking/chatbot-api";
+import { TERMS_HTML, type LangCode } from "@/lib/terms";
+import TurnstileWidget from "@/components/booking/turnstile-widget";
 
 /** UI i18n (đã bỏ Download PDF) */
 const UI_I18N: Record<
@@ -54,7 +56,14 @@ export default function ReviewConfirmStep() {
   const [error, setError] = useState<string | undefined>(undefined);
   const [showTerms, setShowTerms] = useState(false);
 
+  // ── Turnstile anti-bot ──
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const [turnstileKey, setTurnstileKey] = useState(0); // bump to force re-render widget
+
   const ui = UI_I18N[lang] ?? UI_I18N.vi;
+
+  // Lấy nội dung terms theo ngôn ngữ
+  const termsContent = TERMS_HTML[(lang as LangCode)] || TERMS_HTML.vi;
 
   // Khóa cuộn nền khi mở modal
   useEffect(() => {
@@ -130,7 +139,7 @@ export default function ReviewConfirmStep() {
         createdAt: new Date().toISOString(),
       };
 
-      const createResp: any = await createBooking(payload);
+      const createResp: any = await createBooking(payload, turnstileToken);
       if (!createResp?.ok) {
         const serverMsg = createResp?.message || "Tạo booking thất bại";
         const serverErrs = createResp?.errors ? `\n${JSON.stringify(createResp.errors)}` : "";
@@ -149,7 +158,21 @@ export default function ReviewConfirmStep() {
       next();
     } catch (e: any) {
       console.error("❌ Lỗi khi xác nhận:", e);
-      setError(e?.message || "Không gửi được yêu cầu. Vui lòng thử lại.");
+
+      // fetchJson throw Error với .status và .data khi response không ok
+      const isTurnstileError =
+        e?.status === 403 ||
+        e?.data?.error === "TURNSTILE_FAILED";
+
+      if (isTurnstileError) {
+        setError(e?.data?.message || "Xác thực Turnstile thất bại. Vui lòng thử lại.");
+      } else {
+        setError(e?.message || "Không gửi được yêu cầu. Vui lòng thử lại.");
+      }
+
+      // Reset Turnstile token (token đã bị dùng hoặc hết hạn)
+      setTurnstileToken("");
+      setTurnstileKey((k) => k + 1);
     } finally {
       setSubmitting(false);
     }
@@ -262,6 +285,18 @@ export default function ReviewConfirmStep() {
           </div>
         </div>
 
+        {/* ── Turnstile CAPTCHA widget ── */}
+        <div className="rounded-2xl border border-white/40 p-4">
+          <TurnstileWidget
+            key={turnstileKey}
+            onVerify={(token) => setTurnstileToken(token)}
+            onExpire={() => setTurnstileToken("")}
+            onError={() => setTurnstileToken("")}
+            lang={lang}
+            theme="dark"
+          />
+        </div>
+
         {/* Terms checkbox + mở modal */}
         <label className="flex items-start gap-3">
           <input
@@ -293,7 +328,7 @@ export default function ReviewConfirmStep() {
           {t.buttons.back}
         </button>
         <button
-          disabled={!data.acceptedTerms || submitting}
+          disabled={!data.acceptedTerms || !turnstileToken || submitting}
           onClick={handleConfirm}
           className="px-5 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 transition"
         >
@@ -301,27 +336,36 @@ export default function ReviewConfirmStep() {
         </button>
       </div>
 
-      {/* Modal: hiển thị trang /terms trong iframe */}
+      {/* Modal: hiển thị nội dung terms trực tiếp */}
       {showTerms && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowTerms(false)} />
-          <div className="relative mx-auto my-8 w-[min(96vw,1000px)] h-[min(90vh,800px)] bg-black rounded-2xl shadow-2xl ring-1 ring-white/20 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 bg-white/10">
-              <span className="text-sm font-medium">{ui.termsTitle}</span>
+          <div className="relative mx-auto my-8 w-[min(96vw,1000px)] h-[min(90vh,800px)] bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-white/20 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/10 shrink-0">
+              <span className="text-sm font-medium text-white">{ui.termsTitle}</span>
               <div className="flex items-center gap-3">
-                <a href={termsUrl} target="_blank" rel="noreferrer" className="underline text-sm">
+                <a href={termsUrl} target="_blank" rel="noreferrer" className="underline text-sm text-white hover:text-blue-300">
                   {ui.openInNewTab}
                 </a>
                 <button
                   onClick={() => setShowTerms(false)}
-                  className="px-2 py-1 rounded-md border border-white/30 hover:bg-white/10"
+                  className="px-2 py-1 rounded-md border border-white/30 hover:bg-white/10 text-white"
                 >
                   {ui.close}
                 </button>
               </div>
             </div>
 
-            <iframe key={lang} className="w-full h-[calc(100%-40px)]" src={termsUrl} title="Terms Page" />
+            <div 
+              className="flex-1 overflow-y-auto p-6 text-white/90 prose prose-invert prose-sm max-w-none
+                [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:text-white
+                [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-white
+                [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-white
+                [&_p]:mb-3 [&_p]:leading-relaxed
+                [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
+                [&_li]:mb-1"
+              dangerouslySetInnerHTML={{ __html: termsContent }}
+            />
           </div>
         </div>
       )}

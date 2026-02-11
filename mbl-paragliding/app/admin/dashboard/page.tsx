@@ -368,10 +368,10 @@ function PostTable({
     >
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-gray-800">
-          {" "}
+
           {/* Chữ tối cho toàn bảng */}
           <thead className="bg-white/20 border-b border-white/20">
-            {" "}
+
             {/* Nền header sáng */}
             <tr>
               <th className="p-4 text-left font-semibold drop-shadow-sm w-2/5">
@@ -395,7 +395,6 @@ function PostTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-white/15">
-            {" "}
             {/* Đường kẻ mờ */}
             {posts.map((post) => (
               <PostTableRow

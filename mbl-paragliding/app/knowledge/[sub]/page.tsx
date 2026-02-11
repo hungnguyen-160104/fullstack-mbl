@@ -57,7 +57,7 @@ export default async function KnowledgeSubPage({
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((p) => {
-          const img = p.thumbnail || p.coverImage || "/images/post-fallback.jpg";
+          const img = p.thumbnail || p.coverImage || "/images/mebayluon.jpg";
           const date = p.publishedAt || p.createdAt;
           return (
             <Link key={p._id} href={`/blog/${p.slug}`} className="group">

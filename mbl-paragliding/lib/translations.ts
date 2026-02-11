@@ -69,7 +69,7 @@ export const translations = {
         },
         doiBu: {
           name: "Đồi Bù",
-          location: "Hà Nội",
+          location: "Hoà Bình",
           description: "Bay gần Hà Nội",
           highlight: "Điểm bay gần thủ đô",
         },
@@ -107,53 +107,72 @@ export const translations = {
         clothing: {
           title: "Trang phục",
           items: [
-            "Quần áo gọn gàng, không nên mặc váy, nên mặc quần dài, áo dài tay màu sắc sặc sỡ lên hình cho nổi bật",
-            "Có thể mang theo khi bay 1 túi nhỏ 1-2kg đựng đồ cá nhân như điện thoại, chìa khóa, giấy tờ tùy thân",
-            "Có thể đeo kính râm/kính cận khi bay",
-            "Cần mang theo điện thoại còn ít nhất trống 4GB dung lượng trống để nhận ảnh và video sau chuyến bay",
-            "Không nên uống rượu/bia trước khi bay",
+            
+  "Trang phục: Trang phục thoải mái, thể thao (áo tay dài, quần dài); không mặc váy",
+  "Giày: Không mang giày cao gót; ưu tiên giày thể thao hoặc giày leo núi. Có hỗ trợ mượn giày miễn phí khi cần",
+  "Kính mắt: Kính râm để chống tia UV và gió mạnh (30–40 km/h khi bay). Có thể mang theo kính cận.",
+  "Phụ kiện: Có thể mang theo 1 túi nhỏ (1–2kg) đựng đồ cá nhân như điện thoại, chìa khóa, giấy tờ tùy thân"
+
           ],
         },
         items: {
-          title: "Đồ dùng cần thiết",
+          title: "Quy trình bay",
           list: [
-            "Giày thể thao hoặc giày leo núi (bắt buộc)",
-            "Mặc ấm vào mùa đông, áo khoác mỏng tránh nắng vào mùa hè",
-            "Có thể bôi kem chống nắng",
+            "Tại điểm cất cánh, làm quen với phi công, nghe hướng dẫn và đặt câu hỏi",
+            "Mặc trang bị bay, tập các động tác cất cánh",
+            "Chạy đà mạnh, liên tục khi cất cánh theo hướng dẫn của phi công",
+            "Thư giãn, ngắm cảnh và trò chuyện khi đã bay lên không trung",
+            "Trang bị bay an toàn, thoải mái",
+            "Hạ cánh nhẹ nhàng, có thể đứng hoặc ngồi tùy điều kiện",
           ],
         },
       },
       posters: {
-  title: "ĐIỀU KIỆN QUY ĐỊNH ĐỐI VỚI HÀNH KHÁCH",
-  subtitle: "",
-},
+        title: "ĐIỀU KIỆN QUY ĐỊNH ĐỐI VỚI HÀNH KHÁCH",
+        subtitle: "",
+      },
 
       requirements: {
         title: "ĐIỀU KIỆN QUY ĐỊNH ĐỐI VỚI HÀNH KHÁCH",
         eligible: {
-          title: "Điều kiện tham gia",
+          title: "Điều kiện tham gia bay",
           items: [
-            "Trẻ em từ 3 tuổi trở lên - người già dưới 80 tuổi",
-            "Cân nặng tối đa 100kg",
-            "Không gặp các vấn đề tim mạch, huyết áp",
-            "Không gặp các vấn đề về xương khớp",
-            "Không mang thai",
-          ],
+  "Cân nặng: Dưới 120kg. Trường hợp trên 95kg vui lòng thông báo trước để sắp xếp phi công và trang thiết bị phù hợp.",
+  "Thể lực: Mức độ thể lực cơ bản, có khả năng chạy ngắn. Không phù hợp với người thừa cân nhiều hoặc gặp vấn đề nghiêm trọng về vận động.",
+  "Độ tuổi: Từ 2 tuổi trở lên"
+],
         },
         notEligible: {
-          title: "Không nên tham gia nếu",
+          title: "Đặt vé",
           items: [
-            "Đang mang thai",
-            "Có bệnh tim mạch, huyết áp cao không kiểm soát",
-            "Có vấn đề về cột sống, cổ, lưng nghiêm trọng",
+            "Đặt vé trực tiếp qua website hoặc liên hệ hotline/Zalo/WhatsApp",
+            "Thanh toán bằng tiền mặt, chuyển khoản ngân hàng hoặc thẻ tín dụng",
+            "Chúng tôi sẽ liên hệ trong vòng 03 giờ sau khi nhận được booking",
           ],
         },
-        special: {
-          title: "Lưu ý đặc biệt",
-          items: [
-            "Mỗi chuyến bay: một khách bay cùng một phi công chuyên nghiệp, chuyến bay hoàn toàn do phi công cầm lái, khách chỉ cần ngồi thư giãn, ngắm cảnh và tạo dáng thật đẹp để lưu lại những bức ảnh và video ấn tượng nhất giữa không trung.",
-            "Trẻ em trên 3 tuổi đều tính là 1 khách bay riêng với phi công (không bay cùng bố/mẹ hoặc người thân do chỉ có duy nhất 1 ghế ngồi)",
-          ],
+        cancellation: {
+          title: "Huỷ bay",
+          byCompany: {
+            title: "Huỷ bay do Mebayluon Paragliding",
+            items: [
+              "Trường hợp thời tiết không thuận lợi và phải huỷ bay",
+              "Khách hàng không phải thanh toán chi phí",
+              "Vé được hoàn tiền 100%, không phát sinh bất kỳ khoản phí nào",
+            ],
+          },
+          byCustomer: {
+            title: "Huỷ bay do khách hàng",
+            items: [
+              "Việc huỷ bay phải được thông báo qua email/hotline/Zalo/WhatsApp",
+              "Chính sách phí huỷ: Trước 1 ngày: Miễn phí",
+            ],
+          },
+          reschedule: {
+            title: "Đổi lịch bay do khách hàng",
+            items: [
+              "Miễn phí đổi lịch bay",
+            ],
+          },
         },
       },
     },
@@ -383,7 +402,7 @@ export const translations = {
         },
         doiBu: {
           name: "Doi Bu",
-          location: "Hanoi",
+          location: "Hoa Binh",
           description: "Fly near Hanoi",
           highlight: "Flying spot near the capital",
         },
@@ -696,7 +715,7 @@ knowledge: "Connaissances du parapente – Apprendre à voler",
         },
         doiBu: {
           name: "Doi Bu",
-          location: "Hanoi",
+          location: "Hoa Binh",
           description: "Volez près de Hanoi",
           highlight: "Site de vol près de la capitale",
         },
@@ -1011,7 +1030,7 @@ items: {
         },
         doiBu: {
           name: "Дой Бу",
-          location: "Ханой",
+          location: "Хоа Бинь",
           description: "Полет рядом с Ханоем",
           highlight: "Место для полетов рядом со столицей",
         },

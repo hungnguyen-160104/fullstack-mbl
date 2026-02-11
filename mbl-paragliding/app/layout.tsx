@@ -1,7 +1,6 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { Montserrat } from "next/font/google";
+import { Roboto } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
 import { LanguageProvider } from "@/contexts/language-context";
@@ -10,9 +9,10 @@ import { FloatingSocial } from "@/components/floating-social";
 import { buildMetadata, generateOrganizationSchema } from "@/lib/metadata-builder";
 import "./globals.css";
 
-const montserrat = Montserrat({
+const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
   subsets: ["latin", "vietnamese"],
-  variable: "--font-playfair",
+  variable: "--font-roboto",
   display: "swap",
 });
 
@@ -32,6 +32,12 @@ export const metadata: Metadata = {
     author: "Mebayluon Team",
     type: "website",
   }),
+
+  // ✅ thêm đoạn này
+  icons: {
+    icon: "/logo1.png",   // favicon trên tab
+    apple: "/logo1.png",  // icon iOS (tuỳ)
+  },
   applicationName: "Mebayluon",
   appleWebApp: {
     capable: true,
@@ -56,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body 
-        className={`font-sans ${GeistSans.variable} ${montserrat.variable}`}
+        className={roboto.className}
         suppressHydrationWarning
       >
         <LanguageProvider>

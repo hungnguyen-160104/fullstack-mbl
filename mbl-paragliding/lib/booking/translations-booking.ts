@@ -18,6 +18,11 @@ type Dict = {
     processing: string;
     startOver: string;
     viewMap: string;
+    downloadImage: string;
+    downloadPDF: string;
+    generatingImage: string;
+    generatingPDF: string;
+
   };
   labels: {
     guestsCount: string;
@@ -95,6 +100,11 @@ export const bookingTranslations: Record<LangCode, Dict> = {
       processing: "Đang xử lý...",
       startOver: "Đặt chuyến khác",
       viewMap: "Xem bản đồ",
+      downloadImage: "Tải ảnh",
+downloadPDF: "Tải PDF",
+generatingImage: "Đang tạo ảnh...",
+generatingPDF: "Đang tạo PDF...",
+
     },
     labels: {
       guestsCount: "Số lượng người bay",
@@ -181,6 +191,11 @@ export const bookingTranslations: Record<LangCode, Dict> = {
       processing: "Processing...",
       startOver: "Book another",
       viewMap: "View map",
+      downloadImage: "Download image",
+downloadPDF: "Download PDF",
+generatingImage: "Generating image...",
+generatingPDF: "Generating PDF...",
+
     },
     labels: {
       guestsCount: "Number of passengers",
@@ -267,6 +282,11 @@ export const bookingTranslations: Record<LangCode, Dict> = {
       processing: "Traitement…",
       startOver: "Nouvelle réservation",
       viewMap: "Voir la carte",
+      downloadImage: "Télécharger l’image",
+downloadPDF: "Télécharger le PDF",
+generatingImage: "Génération de l’image…",
+generatingPDF: "Génération du PDF…",
+
     },
     labels: {
       guestsCount: "Nombre de passagers",
@@ -353,6 +373,11 @@ export const bookingTranslations: Record<LangCode, Dict> = {
       processing: "Обработка...",
       startOver: "Забронировать ещё",
       viewMap: "Открыть карту",
+      downloadImage: "Скачать изображение",
+downloadPDF: "Скачать PDF",
+generatingImage: "Создание изображения…",
+generatingPDF: "Создание PDF…",
+
     },
     labels: {
       guestsCount: "Количество пассажиров",

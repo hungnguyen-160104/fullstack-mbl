@@ -9,6 +9,7 @@ import {
   type ComputeResult,
 } from "@/lib/booking/calculate-price";
 import type { LangCode } from "@/lib/booking/translations-booking";
+import { bookingTranslations } from "@/lib/booking/translations-booking";
 
 const ADDON_KEYS: AddonKey[] = ["pickup", "flycam", "camera360"];
 
@@ -19,190 +20,466 @@ type Props = {
   bookingResult?: any;
 };
 
-export default function BookingTicket({ booking, totals, lang, bookingResult }: Props) {
+/* ── helpers ── */
+function digitsOnly(s: string) {
+  return (s || "").replace(/\D+/g, "");
+}
+
+function normalizeDateToYYYYMMDD(dateISO?: string) {
+  const raw = (dateISO || "").trim();
+  if (!raw) return "";
+  const parts = raw.split(/[\/\-]/).map((p) => p.trim());
+  if (parts.length !== 3) return "";
+  if (parts[0].length === 4) {
+    const [yyyy, mm, dd] = parts;
+    return `${yyyy}${mm.padStart(2, "0")}${dd.padStart(2, "0")}`;
+  }
+  if (parts[2].length === 4) {
+    const [dd, mm, yyyy] = parts;
+    return `${yyyy}${mm.padStart(2, "0")}${dd.padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function buildBookingRef(dateISO?: string, phone?: string) {
+  const ymd = normalizeDateToYYYYMMDD(dateISO);
+  const phoneDigits = digitsOnly(phone || "");
+  const last4 = phoneDigits ? phoneDigits.slice(-4) : "";
+  if (ymd && last4) return `${ymd}-${last4}`;
+  return `MBL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+/* ── Export-safe palette (HEX only — no oklch) ── */
+const C = {
+  text: "#0f172a",
+  textSecondary: "#334155",
+  muted: "#64748b",
+  border: "#e2e8f0",
+  borderLight: "#f1f5f9",
+  bg: "#ffffff",
+  soft: "#f8fafc",
+  accent: "#0ea5e9",
+  accentLight: "#e0f2fe",
+  accentDark: "#0369a1",
+  dark: "#0b1220",
+  white: "#ffffff",
+  success: "#10b981",
+  successLight: "#d1fae5",
+};
+
+/* ── i18n ticket labels pulled from translations ── */
+function useTicketLabels(lang: LangCode) {
+  const t = bookingTranslations[lang];
+  return {
+    title:
+      lang === "vi" ? "Vé đặt bay" :
+      lang === "fr" ? "Billet de réservation" :
+      lang === "ru" ? "Билет на полёт" :
+      "Booking Ticket",
+    brandName: "MEBAYLUON PARAGLIDING",
+    created:
+      lang === "vi" ? "Tạo lúc" :
+      lang === "fr" ? "Créé le" :
+      lang === "ru" ? "Создано" :
+      "Created",
+    ref:
+      lang === "vi" ? "Mã đặt chỗ" :
+      lang === "fr" ? "Réf. réservation" :
+      lang === "ru" ? "Код бронирования" :
+      "Booking Ref",
+    flight: t.stepNames?.[0] ?? (lang === "vi" ? "Chuyến bay" : "Flight"),
+    flightSection:
+      lang === "vi" ? "Thông tin chuyến bay" :
+      lang === "fr" ? "Détails du vol" :
+      lang === "ru" ? "Информация о полёте" :
+      "Flight details",
+    contact: t.labels.contactInfo,
+    addons: t.labels.addonsTitle,
+    payment:
+      lang === "vi" ? "Thanh toán" :
+      lang === "fr" ? "Paiement" :
+      lang === "ru" ? "Оплата" :
+      "Payment",
+    basePer: t.labels.basePricePerGuest,
+    optionalServices: t.labels.addonsTitle,
+    total:
+      lang === "vi" ? "Tổng cộng" :
+      lang === "fr" ? "Total" :
+      lang === "ru" ? "Итого" :
+      "Total",
+    arrive:
+      lang === "vi" ? "Vui lòng có mặt trước 15 phút để briefing an toàn." :
+      lang === "fr" ? "Veuillez arriver 15 minutes avant pour le briefing de sécurité." :
+      lang === "ru" ? "Пожалуйста, прибудьте за 15 минут до начала для инструктажа." :
+      "Please arrive 15 minutes early for safety briefing.",
+    location: t.labels.location,
+    date: t.labels.date,
+    time: t.labels.timeSlot,
+    guests: t.labels.numGuests,
+    phone: t.labels.phone,
+    pax: lang === "vi" ? "khách" : lang === "fr" ? "pers" : lang === "ru" ? "чел" : "pax",
+    none: lang === "vi" ? "Không có" : lang === "fr" ? "Aucun" : lang === "ru" ? "Нет" : "None",
+    confirmed:
+      lang === "vi" ? "Đã xác nhận" :
+      lang === "fr" ? "Confirmé" :
+      lang === "ru" ? "Подтверждено" :
+      "Confirmed",
+    discount: t.labels.groupDiscount,
+  };
+}
+
+export default function BookingTicket({
+  booking,
+  totals,
+  lang,
+  bookingResult,
+}: Props) {
   const cfg = LOCATIONS[booking.location];
   const contact = booking.contact;
+  const labels = useTicketLabels(lang);
 
-  const fallbackRef = React.useMemo(
-    () => `MBL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    []
-  );
-
-  const bookingRef =
-    bookingResult?.id ||
-    bookingResult?._id ||
-    bookingResult?.bookingId ||
-    bookingResult?.code ||
-    fallbackRef;
+  const locationName =
+    bookingResult?.locationName || cfg?.name?.[lang] || cfg?.name?.vi || "—";
 
   const createdAt =
     bookingResult?.createdAt ||
     bookingResult?.createdAtISO ||
     new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
 
-  const locationName =
-    bookingResult?.locationName || cfg.name[lang] || cfg.name.vi;
+  const bookingRef = buildBookingRef(booking.dateISO, contact?.phone);
+
+  const guestsCount = Math.max(1, booking.guestsCount || 1);
+  const basePerGuest =
+    guestsCount > 0 ? Math.round((totals.baseTotal || 0) / guestsCount) : totals.baseTotal || 0;
 
   const addons = ADDON_KEYS.map((k) => {
-    const qty = totals.addonsQty[k] || 0;
-    const unit = totals.addonsUnitPrice[k] || 0;
-    const total = totals.addonsTotal[k] || 0;
-    const label = cfg.addons[k]?.label?.[lang] ?? cfg.addons[k]?.label?.vi ?? k;
+    const qty = totals.addonsQty?.[k] || 0;
+    const unit = totals.addonsUnitPrice?.[k] || 0;
+    const total = totals.addonsTotal?.[k] || 0;
+    const label =
+      cfg?.addons?.[k]?.label?.[lang] ??
+      cfg?.addons?.[k]?.label?.vi ??
+      k;
     return { k, qty, unit, total, label };
   }).filter((a) => a.qty > 0);
 
-  const pickupSelected = (totals.addonsQty.pickup || 0) > 0;
-
   return (
-    <div className="w-full bg-white text-slate-900 rounded-2xl p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-sm uppercase tracking-wider text-slate-500">
-            MEBAYLUON PARAGLIDING
+    <div
+      data-ticket
+      style={{
+        background: C.bg,
+        color: C.text,
+        borderRadius: 24,
+        overflow: "hidden",
+        border: `1px solid ${C.border}`,
+        boxShadow: "0 4px 24px rgba(15,23,42,0.08)",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}
+    >
+      {/* ═══ Header gradient band ═══ */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)",
+          padding: "24px 28px 20px",
+          color: C.white,
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <img
+                src="/logo.png"
+                alt="MBL"
+                crossOrigin="anonymous"
+                style={{ width: 32, height: 32, objectFit: "contain" }}
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: 2, opacity: 0.85, textTransform: "uppercase", fontWeight: 600 }}>
+                {labels.brandName}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, marginTop: 2 }}>
+                {labels.title}
+              </div>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold leading-tight">
-            E-Ticket / Vé đặt bay
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">Created: {createdAt}</p>
+
+          {/* Status badge */}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: 12,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ✓ {labels.confirmed}
+          </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-xs text-slate-500">Booking Ref</div>
-          <div className="font-mono font-semibold">{bookingRef}</div>
+        {/* Ref + Created */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>
+            {labels.created}: {createdAt}
+          </div>
+          <div
+            style={{
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              fontWeight: 800,
+              fontSize: 15,
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: 10,
+              padding: "6px 16px",
+              letterSpacing: 1,
+            }}
+          >
+            {bookingRef}
+          </div>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-slate-200 p-4">
-          <div className="text-xs uppercase tracking-wider text-slate-500">Flight</div>
-          <div className="mt-2 space-y-1 text-sm">
-            <div>
-              <span className="font-semibold">Location:</span> {locationName}
+      {/* ═══ Body ═══ */}
+      <div style={{ padding: "24px 28px 28px" }}>
+        {/* ── Flight + Contact ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Flight card */}
+          <div
+            style={{
+              borderRadius: 16,
+              border: `1px solid ${C.border}`,
+              padding: 18,
+              background: C.soft,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 16 }}>✈</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.accentDark, letterSpacing: 1, textTransform: "uppercase" }}>
+                {labels.flightSection}
+              </span>
             </div>
-            <div>
-              <span className="font-semibold">Date:</span> {booking.dateISO || "—"}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Row label={labels.location} value={locationName} />
+              <Row label={labels.date} value={booking.dateISO || "—"} />
+              <Row label={labels.time} value={booking.timeSlot || "—"} />
+              <Row label={labels.guests} value={String(booking.guestsCount ?? "—")} />
             </div>
-            <div>
-              <span className="font-semibold">Time:</span> {booking.timeSlot || "—"}
+          </div>
+
+          {/* Contact card */}
+          <div
+            style={{
+              borderRadius: 16,
+              border: `1px solid ${C.border}`,
+              padding: 18,
+              background: C.soft,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 16 }}>👤</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.accentDark, letterSpacing: 1, textTransform: "uppercase" }}>
+                {labels.contact}
+              </span>
             </div>
-            <div>
-              <span className="font-semibold">Guests:</span> {booking.guestsCount}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Row label={labels.phone} value={contact?.phone || "—"} />
+              <Row label="Email" value={contact?.email || "—"} />
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-4">
-          <div className="text-xs uppercase tracking-wider text-slate-500">Contact</div>
-          <div className="mt-2 space-y-1 text-sm">
-            <div>
-              <span className="font-semibold">Phone:</span> {contact?.phone || "—"}
-            </div>
-            <div>
-              <span className="font-semibold">Email:</span> {contact?.email || "—"}
-            </div>
-            {pickupSelected && (
-              <div>
-                <span className="font-semibold">Pickup:</span>{" "}
-                {booking.location === "ha_noi" ? "BigC Thăng Long" : contact?.pickupLocation || "—"}
-              </div>
-            )}
-            {contact?.specialRequest && (
-              <div>
-                <span className="font-semibold">Note:</span> {contact.specialRequest}
-              </div>
-            )}
-          </div>
+        {/* ── Dashed separator ── */}
+        <div
+          style={{
+            borderTop: `2px dashed ${C.border}`,
+            margin: "20px 0",
+            position: "relative",
+          }}
+        >
+          {/* Left notch */}
+          <div
+            style={{
+              position: "absolute",
+              left: -36,
+              top: -12,
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              background: C.bg,
+              border: `1px solid ${C.border}`,
+            }}
+          />
+          {/* Right notch */}
+          <div
+            style={{
+              position: "absolute",
+              right: -36,
+              top: -12,
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              background: C.bg,
+              border: `1px solid ${C.border}`,
+            }}
+          />
         </div>
-      </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 p-4">
-        <div className="text-xs uppercase tracking-wider text-slate-500">Passengers</div>
-        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          {(booking.guests || []).length ? (
-            booking.guests.map((g, i) => (
-              <div key={i} className="rounded-lg bg-slate-50 p-3">
-                <div className="font-semibold">
-                  {i + 1}. {g.fullName || "—"}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {g.gender ? `${g.gender}` : ""}
-                  {g.dob ? ` · ${g.dob}` : ""}
-                  {g.nationality ? ` · ${g.nationality}` : ""}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-slate-500">—</div>
-          )}
-        </div>
-      </div>
+        {/* ── Addons + Payment ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Add-ons card */}
+          <div
+            style={{
+              borderRadius: 16,
+              border: `1px solid ${C.border}`,
+              padding: 18,
+              background: C.soft,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 16 }}>🎒</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.accentDark, letterSpacing: 1, textTransform: "uppercase" }}>
+                {labels.addons}
+              </span>
+            </div>
 
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-slate-200 p-4">
-          <div className="text-xs uppercase tracking-wider text-slate-500">Add-on services</div>
-          <div className="mt-2 space-y-2 text-sm">
-            {addons.length ? (
-              addons.map((a) => (
-                <div key={a.k} className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{a.label}</div>
-                    <div className="text-xs text-slate-500">
-                      {formatByLang(lang, a.unit, a.unit)} /{" "}
-                      {lang === "vi" ? "khách" : "pax"} × {a.qty}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {addons.length ? (
+                addons.map((a) => (
+                  <div
+                    key={a.k}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      background: C.bg,
+                      border: `1px solid ${C.borderLight}`,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>{a.label}</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                        {formatByLang(lang, a.unit, a.unit)} / {labels.pax} × {a.qty}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 13, whiteSpace: "nowrap" }}>
+                      {formatByLang(lang, a.total, a.total)}
                     </div>
                   </div>
-                  <div className="font-semibold">{formatByLang(lang, a.total, a.total)}</div>
+                ))
+              ) : (
+                <div style={{ color: C.muted, fontSize: 13 }}>{labels.none}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Payment card */}
+          <div
+            style={{
+              borderRadius: 16,
+              border: `1px solid ${C.border}`,
+              padding: 18,
+              background: C.soft,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 16 }}>💳</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.accentDark, letterSpacing: 1, textTransform: "uppercase" }}>
+                {labels.payment}
+              </span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <PriceRow label={labels.basePer} value={formatByLang(lang, basePerGuest, basePerGuest)} />
+
+              {totals.addonsGrandTotal > 0 && (
+                <PriceRow
+                  label={labels.optionalServices}
+                  value={formatByLang(lang, totals.addonsGrandTotal, totals.addonsGrandTotal)}
+                />
+              )}
+
+              {totals.discountTotal > 0 && (
+                <PriceRow
+                  label={labels.discount}
+                  value={`-${formatByLang(lang, totals.discountTotal, totals.discountTotal)}`}
+                  valueColor={C.success}
+                />
+              )}
+
+              {/* Total bar */}
+              <div
+                style={{
+                  marginTop: 8,
+                  borderRadius: 14,
+                  padding: "14px 16px",
+                  background: "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)",
+                  color: C.white,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 900, fontSize: 16 }}>
+                  <span>{labels.total}</span>
+                  <span>{formatByLang(lang, totals.totalAfterDiscount, totals.totalAfterDiscount)}</span>
                 </div>
-              ))
-            ) : (
-              <div className="text-slate-500">{lang === "vi" ? "Không có" : "None"}</div>
-            )}
+                <div style={{ marginTop: 8, fontSize: 11, opacity: 0.9, lineHeight: 1.4 }}>
+                  {labels.arrive}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-4">
-          <div className="text-xs uppercase tracking-wider text-slate-500">Price</div>
-          <div className="mt-2 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>{lang === "vi" ? "Giá cơ bản" : "Base price"}</span>
-              <span className="font-medium">
-                {formatByLang(lang, totals.baseTotal, totals.baseTotal)}
-              </span>
-            </div>
-
-            {totals.discountTotal > 0 && (
-              <div className="flex justify-between">
-                <span>{lang === "vi" ? "Giảm theo nhóm" : "Group discount"}</span>
-                <span className="font-medium">
-                  -{formatByLang(lang, totals.discountTotal, totals.discountTotal)}
-                </span>
-              </div>
-            )}
-
-            {totals.addonsGrandTotal > 0 && (
-              <div className="flex justify-between">
-                <span>{lang === "vi" ? "Dịch vụ thêm" : "Add-ons"}</span>
-                <span className="font-medium">
-                  {formatByLang(lang, totals.addonsGrandTotal, totals.addonsGrandTotal)}
-                </span>
-              </div>
-            )}
-
-            <div className="border-t border-slate-200 pt-2 flex justify-between text-base">
-              <span className="font-semibold">{lang === "vi" ? "Tổng cộng" : "Total"}</span>
-              <span className="font-bold">
-                {formatByLang(lang, totals.totalAfterDiscount, totals.totalAfterDiscount)}
-              </span>
-            </div>
-
-            <div className="text-xs text-slate-500">
-              {lang === "vi"
-                ? "* Vui lòng có mặt trước 15 phút để briefing an toàn."
-                : "* Please arrive 15 minutes early for safety briefing."}
-            </div>
-          </div>
+        {/* ── Footer ── */}
+        <div
+          style={{
+            marginTop: 20,
+            textAlign: "center",
+            fontSize: 11,
+            color: C.muted,
+            lineHeight: 1.5,
+          }}
+        >
+          Hotline: 0964.073.555 — 097.970.2812 (Zalo / WhatsApp / Telegram)
+          <br />
+          mebayluon.com
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Sub-components ── */
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 800, textAlign: "right", color: "#0f172a" }}>{value}</div>
+    </div>
+  );
+}
+
+function PriceRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13 }}>
+      <span style={{ color: "#334155" }}>{label}</span>
+      <span style={{ fontWeight: 800, color: valueColor || "#0f172a" }}>{value}</span>
     </div>
   );
 }
